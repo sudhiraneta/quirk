@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Quirk",
+  "version": "1.0.0",
+  "description": "A Chrome extension with personality templates and split-screen functionality",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["personality-templates.js", "content-script.js"],
+      "css": ["split-screen.css"]
+    }
+  ],
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

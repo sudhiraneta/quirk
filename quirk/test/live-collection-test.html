@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quirk - Live Collection Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .header p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+    .main-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 500px;
+      gap: 20px;
+    }
+    .pinterest-feed {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .feed-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+    }
+    .pin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .pinWrapper {
+      background: #f9f9f9;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 2px solid transparent;
+    }
+    .pinWrapper:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .pinWrapper.collected {
+      border-color: #4caf50;
+      animation: pulse 0.5s;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .pinWrapper img {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      display: block;
+    }
+    .pin-info {
+      padding: 15px;
+    }
+    .pin-info h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #111;
+    }
+    .pin-info .pinDescription {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .sidebar {
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+    .control-panel {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    .control-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .analyze-btn {
+      width: 100%;
+      background: #e60023;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-bottom: 15px;
+    }
+    .analyze-btn:hover {
+      background: #ad081b;
+    }
+    .analyze-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .status.idle {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    .status.collecting {
+      background: #fff3cd;
+      color: #856404;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .status.complete {
+      background: #d4edda;
+      color: #155724;
+    }
+    .results-panel {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .results-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .result-item {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 4px solid #667eea;
+    }
+    .result-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .result-value {
+      font-size: 14px;
+      color: #333;
+      line-height: 1.5;
+    }
+    .keyword-tag {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      margin: 3px;
+    }
+    .score-bar {
+      margin-bottom: 15px;
+    }
+    .score-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+    .score-fill {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .score-fill-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.5s;
+    }
+    .final-result {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 15px;
+    }
+    .final-result h3 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .final-result p {
+      font-size: 14px;
+      opacity: 0.95;
+      line-height: 1.6;
+    }
+    .progress {
+      font-size: 14px;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔮 Quirk Collection Test</h1>
+    <p>Watch in real-time as Quirk analyzes Pinterest pins</p>
+  </div>
+
+  <div class="main-container">
+    <!-- Pinterest Feed Simulation -->
+    <div class="pinterest-feed">
+      <div class="feed-header">
+        <div class="feed-title">📌 Your Pinterest Feed</div>
+        <div style="color: #666; font-size: 14px;">4 pins loaded</div>
+      </div>
+
+      <div class="pin-grid">
+        <!-- Pin 1 -->
+        <div class="pinWrapper" data-test-id="pinWrapper">
+          <img src="user1_feed/_ (1).jpeg" alt="woman in athletic wear with headphones holding green smoothie outdoor wellness morning routine">
+          <div class="pin-info">
+            <h2 data-test-id="pinTitle">Morning Wellness Routine</h2>
+            <div class="pinDescription">Outdoor smoothie moment after workout, perfect golden hour wellness vibes with athletic wear</div>
+          </div>
+        </div>
+
+        <!-- Pin 2 -->
+        <div class="pinWrapper" data-test-id="pinWrapper">
+          <img src="user1_feed/_.jpeg" alt="woman in black workout attire modern minimalist gym clean aesthetic fitness routine">
+          <div class="pin-info">
+            <h2 data-test-id="pinTitle">Gym Aesthetic Goals</h2>
+            <div class="pinDescription">Modern gym workspace for productive fitness routine, athletic body goals and workout motivation</div>
+          </div>
+        </div>
+
+        <!-- Pin 3 -->
+        <div class="pinWrapper" data-test-id="pinWrapper">
+          <img src="user1_feed/how she lost 22lbs in a month!!.jpeg" alt="fitness wellness lifestyle transformation body health routine">
+          <div class="pin-info">
+            <h2 data-test-id="pinTitle">Transformation Journey</h2>
+            <div class="pinDescription">Fitness and body transformation through exercise and training routine</div>
+          </div>
+        </div>
+
+        <!-- Pin 4 -->
+        <div class="pinWrapper" data-test-id="pinWrapper">
+          <img src="user1_feed/🤍.jpeg" alt="woman in minimalist kitchen white aesthetic coffee latte modern clean morning routine">
+          <div class="pin-info">
+            <h2 data-test-id="pinTitle">Morning Routine Aesthetic</h2>
+            <div class="pinDescription">Modern clean kitchen aesthetic with morning latte and soft dreamy wellness vibes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Controls & Results -->
+    <div class="sidebar">
+      <!-- Control Panel -->
+      <div class="control-panel">
+        <div class="control-title">⚡ Controls</div>
+        <button class="analyze-btn" onclick="startAnalysis()">
+          🚀 Analyze My Vibe
+        </button>
+        <div id="status" class="status idle">
+          Ready to analyze
+        </div>
+        <div id="progress" class="progress"></div>
+      </div>
+
+      <!-- Results Panel -->
+      <div class="results-panel">
+        <div class="results-title">📊 Live Results</div>
+        <div id="results">
+          <p style="color: #999; text-align: center; padding: 40px 0;">
+            Click "Analyze My Vibe" to start
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load extension scripts -->
+  <script src="../personality-templates.js"></script>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const resultsEl = document.getElementById('results');
+    const pins = document.querySelectorAll('.pinWrapper');
+
+    function updateStatus(message, state = 'idle') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${state}`;
+    }
+
+    function updateProgress(message) {
+      progressEl.textContent = message;
+    }
+
+    async function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function startAnalysis() {
+      const btn = document.querySelector('.analyze-btn');
+      btn.disabled = true;
+      resultsEl.innerHTML = '';
+
+      updateStatus('🔍 Starting analysis...', 'collecting');
+      updateProgress('');
+      await sleep(800);
+
+      // Step 1: Extract pins
+      updateStatus('📍 Extracting pin data...', 'collecting');
+      const extractedPins = [];
+
+      for (let i = 0; i < pins.length; i++) {
+        const pinEl = pins[i];
+        pinEl.classList.add('collected');
+
+        updateProgress(`Collecting pin ${i + 1} of ${pins.length}...`);
+
+        const pin = {
+          title: '',
+          description: '',
+          altText: ''
+        };
+
+        const img = pinEl.querySelector('img');
+        if (img) pin.altText = (img.alt || '').toLowerCase();
+
+        const titleEl = pinEl.querySelector('[data-test-id="pinTitle"], h2');
+        if (titleEl) pin.title = (titleEl.textContent || '').toLowerCase();
+
+        const descEl = pinEl.querySelector('.pinDescription');
+        if (descEl) pin.description = (descEl.textContent || '').toLowerCase();
+
+        pin.fullText = `${pin.title} ${pin.description} ${pin.altText}`.toLowerCase();
+
+        if (pin.fullText.trim()) {
+          extractedPins.push(pin);
+
+          // Show extracted data
+          const keywords = findKeywords(pin.fullText);
+          resultsEl.innerHTML += `
+            <div class="result-item">
+              <div class="result-label">Pin ${i + 1}</div>
+              <div class="result-value">
+                ${keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        await sleep(600);
+      }
+
+      updateStatus('🧮 Analyzing patterns...', 'collecting');
+      await sleep(1000);
+
+      // Step 2: Analyze
+      const analysis = analyzeAesthetic(extractedPins);
+
+      // Show scores
+      resultsEl.innerHTML = '<div style="margin-bottom: 15px; font-weight: 600; color: #333;">Score Breakdown:</div>';
+
+      analysis.sortedPersonalities.forEach(([personality, percentage]) => {
+        if (percentage > 0) {
+          resultsEl.innerHTML += `
+            <div class="score-bar">
+              <div class="score-label">
+                <span>${personality}</span>
+                <span>${percentage}%</span>
+              </div>
+              <div class="score-fill">
+                <div class="score-fill-inner" style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      await sleep(800);
+
+      // Step 3: Show final result
+      const template = personalityTemplates[analysis.dominantPersonality];
+      const randomRoast = template.roasts[Math.floor(Math.random() * template.roasts.length)];
+
+      resultsEl.innerHTML += `
+        <div class="final-result">
+          <h3>${template.name}</h3>
+          <p><em>"${randomRoast}"</em></p>
+          <p style="margin-top: 10px; font-size: 13px;">
+            ${template.vibeCheck}
+          </p>
+        </div>
+      `;
+
+      updateStatus('✅ Analysis complete!', 'complete');
+      updateProgress(`Analyzed ${extractedPins.length} pins`);
+
+      btn.disabled = false;
+
+      // Reset pin highlights
+      setTimeout(() => {
+        pins.forEach(p => p.classList.remove('collected'));
+      }, 2000);
+    }
+
+    function findKeywords(text) {
+      const found = [];
+      Object.entries(aestheticKeywords).forEach(([personality, keywords]) => {
+        keywords.forEach(keyword => {
+          if (text.includes(keyword.toLowerCase()) && !found.includes(keyword)) {
+            found.push(keyword);
+          }
+        });
+      });
+      return found.slice(0, 8); // Show first 8
+    }
+
+    function analyzeAesthetic(pins) {
+      const scores = {
+        techMinimalist: 0,
+        gymBaddie: 0,
+        pilatesPrincess: 0,
+        chaoticFood: 0,
+        professionalVibe: 0
+      };
+
+      pins.forEach(pin => {
+        const text = pin.fullText;
+        Object.keys(aestheticKeywords).forEach(personality => {
+          const personalityKeywords = aestheticKeywords[personality];
+          personalityKeywords.forEach(keyword => {
+            if (text.includes(keyword)) {
+              scores[personality]++;
+            }
+          });
+        });
+      });
+
+      const total = Object.values(scores).reduce((a, b) => a + b, 0);
+      const percentages = {};
+      Object.keys(scores).forEach(personality => {
+        percentages[personality] = total > 0 ? Math.round((scores[personality] / total) * 100) : 0;
+      });
+
+      const sortedPersonalities = Object.entries(percentages)
+        .sort(([, a], [, b]) => b - a);
+
+      const dominantPersonality = sortedPersonalities[0][1] > 25
+        ? sortedPersonalities[0][0]
+        : 'balancedBaddie';
+
+      return {
+        scores,
+        percentages,
+        dominantPersonality,
+        sortedPersonalities
+      };
+    }
+  </script>
+</body>
+</html>
