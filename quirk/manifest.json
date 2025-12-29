@@ -1,23 +1,42 @@
 {
   "manifest_version": 3,
-  "name": "Quirk",
-  "version": "1.0.0",
-  "description": "A Chrome extension with personality templates and split-screen functionality",
+  "name": "Quirk - AI Personality Insights",
+  "version": "2.0.0",
+  "description": "AI-powered personality analysis from your Pinterest and browsing habits",
   "permissions": [
-    "activeTab",
-    "storage"
+    "sidePanel",
+    "storage",
+    "history",
+    "tabs",
+    "activeTab"
   ],
+  "host_permissions": [
+    "https://*.pinterest.com/*",
+    "https://*.instagram.com/*",
+    "https://*.youtube.com/*",
+    "https://*.twitter.com/*",
+    "https://*.tiktok.com/*",
+    "https://*.amazon.com/*",
+    "https://*.linkedin.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
   "action": {
-    "default_popup": "popup.html",
+    "default_title": "Open Quirk",
     "default_icon": {
       "128": "icons/icon128.png"
     }
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://*.pinterest.com/*"],
       "js": ["personality-templates.js", "content-script.js"],
-      "css": ["split-screen.css"]
+      "run_at": "document_idle"
     }
   ],
   "icons": {
