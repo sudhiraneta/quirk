@@ -1,3 +1,10 @@
+/**
+ * Quirk Extension Popup
+ * Main UI for triggering personality analysis
+ */
+
+const API_BASE_URL = 'http://localhost:8000/api/v1';  // Change for production
+
 document.addEventListener('DOMContentLoaded', function() {
   const activateBtn = document.getElementById('activate');
   const statusEl = document.getElementById('status');
@@ -16,80 +23,123 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Disable button and show loading
       activateBtn.disabled = true;
-      statusEl.innerHTML = '<div class="loading">🔮 Analyzing your Pinterest vibe...<br>This might take a few seconds...</div>';
+      statusEl.innerHTML = '<div class="loading">🔮 Step 1/3: Collecting Pinterest data...</div>';
 
-      // Send message to content script
-      chrome.tabs.sendMessage(tab.id, { action: 'analyzePinterest' }, (response) => {
-        if (chrome.runtime.lastError) {
-          statusEl.innerHTML = '<div class="error">⚠️ Error: Please refresh Pinterest and try again.<br>(Make sure you\'re logged in!)</div>';
-          activateBtn.disabled = false;
-          return;
-        }
-
-        if (!response || !response.success) {
-          statusEl.innerHTML = `<div class="error">⚠️ ${response?.error || 'Something went wrong. Try scrolling on Pinterest first!'}</div>`;
-          activateBtn.disabled = false;
-          return;
-        }
-
-        // Display results
-        displayResults(response.data);
-        activateBtn.disabled = false;
+      // Step 1: Extract pins from Pinterest
+      const pinsResponse = await new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tab.id, { action: 'extractPins' }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error('Please refresh Pinterest and try again'));
+            return;
+          }
+          resolve(response);
+        });
       });
 
+      if (!pinsResponse || !pinsResponse.success) {
+        throw new Error(pinsResponse?.error || 'Failed to extract pins');
+      }
+
+      const pins = pinsResponse.pins;
+      console.log(`Extracted ${pins.length} pins`);
+
+      // Step 2: Get user UUID
+      statusEl.innerHTML = '<div class="loading">🔮 Step 2/3: Sending data to backend...</div>';
+
+      const uuidResponse = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ action: 'getUserUUID' }, (response) => {
+          if (chrome.runtime.lastError || !response.success) {
+            reject(new Error('Failed to get user ID'));
+            return;
+          }
+          resolve(response);
+        });
+      });
+
+      const userUUID = uuidResponse.uuid;
+
+      // Step 3: Send pins to backend
+      const sendResponse = await fetch(`${API_BASE_URL}/pinterest/pins`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_uuid: userUUID,
+          pins: pins
+        })
+      });
+
+      if (!sendResponse.ok) {
+        throw new Error(`Backend error: ${sendResponse.statusText}`);
+      }
+
+      console.log('Pins sent successfully');
+
+      // Step 4: Get roast analysis
+      statusEl.innerHTML = '<div class="loading">🔮 Step 3/3: Generating your roast...<br>This may take a moment...</div>';
+
+      const roastResponse = await fetch(`${API_BASE_URL}/analysis/roast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_uuid: userUUID
+        })
+      });
+
+      if (!roastResponse.ok) {
+        throw new Error(`Analysis failed: ${roastResponse.statusText}`);
+      }
+
+      const roastData = await roastResponse.json();
+      console.log('Got roast:', roastData);
+
+      // Display results
+      displayResults(roastData, pins.length);
+      activateBtn.disabled = false;
+
     } catch (error) {
-      statusEl.innerHTML = `<div class="error">⚠️ Error: ${error.message}</div>`;
+      console.error('Error:', error);
+      statusEl.innerHTML = `<div class="error">⚠️ Error: ${error.message}<br>Make sure the backend is running!</div>`;
       activateBtn.disabled = false;
     }
   });
 
-  function displayResults(data) {
-    const { roast, totalPins } = data;
-
+  function displayResults(roastData, totalPins) {
     statusEl.innerHTML = '🎯 Analysis Complete!';
 
     // Build personality breakdown HTML
     let breakdownHTML = '';
-    roast.breakdown.forEach(([personality, percentage]) => {
-      if (percentage > 0) {
-        const personalityNames = {
-          techMinimalist: 'Tech Minimalist Queen',
-          gymBaddie: 'Gym Baddie',
-          pilatesPrincess: 'Pilates Princess',
-          chaoticFood: 'Chaotic Food Curator',
-          professionalVibe: 'Professional Vibe Curator',
-          balancedBaddie: 'Balanced Baddie'
-        };
-
-        breakdownHTML += `
-          <div class="percentage-bar">
-            <div class="percentage-label">
-              <span>${personalityNames[personality] || personality}</span>
-              <span>${percentage}%</span>
-            </div>
-            <div class="bar">
-              <div class="bar-fill" style="width: ${percentage}%"></div>
-            </div>
+    roastData.breakdown.forEach(item => {
+      breakdownHTML += `
+        <div class="percentage-bar">
+          <div class="percentage-label">
+            <span>${item.trait}</span>
+            <span>${item.percentage}%</span>
           </div>
-        `;
-      }
+          <div class="bar">
+            <div class="bar-fill" style="width: ${item.percentage}%"></div>
+          </div>
+        </div>
+      `;
     });
 
     resultsEl.innerHTML = `
       <div class="results">
-        <div class="personality-name">${roast.personalityName}</div>
-        <div class="personality-desc">${roast.personalityDescription}</div>
+        <div class="personality-name">${roastData.personality_name}</div>
 
-        <div class="roast-text">"${roast.mainRoast}"</div>
+        <div class="roast-text">"${roastData.roast}"</div>
 
-        <div class="vibe-check">✨ ${roast.vibeCheck}</div>
+        <div class="vibe-check">✨ ${roastData.vibe_check}</div>
 
         <div class="breakdown">
           <div class="breakdown-title">Your Vibe Breakdown:</div>
           ${breakdownHTML}
         </div>
 
-        <div class="pin-count">Analyzed ${totalPins} pins</div>
+        <div class="pin-count">📌 Analyzed ${roastData.data_summary.pinterest_pins_analyzed} pins</div>
       </div>
     `;
 

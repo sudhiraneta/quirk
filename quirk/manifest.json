@@ -35,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["https://*.pinterest.com/*"],
-      "js": ["personality-templates.js", "content-script.js"],
+      "js": ["content-script.js"],
       "run_at": "document_idle"
     }
   ],

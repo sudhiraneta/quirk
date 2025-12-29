@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quirk Side Panel</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .info {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <h1>✨ Quirk</h1>
+  <div class="info">
+    <p>Your AI personality analyzer</p>
+    <p style="font-size: 12px; opacity: 0.8;">Go to Pinterest and click the extension icon to analyze your vibe!</p>
+  </div>
+
+  <button onclick="chrome.action.openPopup()">Open Quirk</button>
+
+  <div class="info" style="margin-top: 20px; font-size: 12px;">
+    <p><strong>How it works:</strong></p>
+    <ol style="margin: 10px 0; padding-left: 20px;">
+      <li>Browse Pinterest normally</li>
+      <li>Click the Quirk extension icon</li>
+      <li>Get your personality roast!</li>
+    </ol>
+  </div>
+</body>
+</html>

@@ -1,18 +1,23 @@
-// Content script for Quirk extension
+/**
+ * Quirk Content Script
+ * Extracts Pinterest pin data from the page
+ */
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'analyzePinterest') {
-    analyzePinterestBoard()
-      .then(results => sendResponse({ success: true, data: results }))
+  if (request.action === 'extractPins') {
+    extractPinsFromPage()
+      .then(pins => sendResponse({ success: true, pins }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep channel open for async response
   }
 });
 
-// Extract Pinterest data
-async function analyzePinterestBoard() {
-  console.log('Starting Pinterest analysis...');
+/**
+ * Extract pin data from Pinterest page
+ */
+async function extractPinsFromPage() {
+  console.log('Starting Pinterest pin extraction...');
 
   // Check if we're on Pinterest
   if (!window.location.hostname.includes('pinterest.com')) {
@@ -23,152 +28,106 @@ async function analyzePinterestBoard() {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Extract pin data
-  const pins = extractPinData();
-
-  if (pins.length === 0) {
-    throw new Error('No pins found. Try scrolling down to load more pins!');
-  }
-
-  console.log(`Found ${pins.length} pins`);
-
-  // Analyze aesthetic
-  const analysis = analyzeAesthetic(pins);
-
-  // Generate roast
-  const roast = generateRoast(analysis);
-
-  return {
-    totalPins: pins.length,
-    analysis: analysis,
-    roast: roast
-  };
-}
-
-// Extract pin titles, descriptions, and alt text
-function extractPinData() {
   const pins = [];
 
   // Pinterest uses various selectors, try multiple approaches
-  const pinElements = document.querySelectorAll('[data-test-id="pin"], [data-test-id="pinWrapper"], .pinWrapper');
+  const pinElements = document.querySelectorAll('[data-test-id="pin"], [data-test-id="pinWrapper"], .pinWrapper, [data-grid-item="true"]');
+
+  console.log(`Found ${pinElements.length} pin elements`);
 
   pinElements.forEach(pinEl => {
     const pin = {
       title: '',
       description: '',
-      altText: '',
-      boardName: ''
+      alt_text: '',
+      board_name: '',
+      category: 'uncategorized'
     };
 
     // Try to get image alt text
     const img = pinEl.querySelector('img');
     if (img) {
-      pin.altText = (img.alt || '').toLowerCase();
+      pin.alt_text = img.alt || '';
     }
 
     // Try to get title
-    const titleEl = pinEl.querySelector('[data-test-id="pinTitle"], h2, h3');
+    const titleEl = pinEl.querySelector('[data-test-id="pinTitle"], h2, h3, .pinTitle');
     if (titleEl) {
-      pin.title = (titleEl.textContent || '').toLowerCase();
+      pin.title = titleEl.textContent || '';
     }
 
     // Try to get description
-    const descEl = pinEl.querySelector('[data-test-id="pinDescription"], .pinDescription');
+    const descEl = pinEl.querySelector('[data-test-id="pinDescription"], .pinDescription, [data-test-id="pin-description"]');
     if (descEl) {
-      pin.description = (descEl.textContent || '').toLowerCase();
+      pin.description = descEl.textContent || '';
     }
 
-    // Combine all text for analysis
-    pin.fullText = `${pin.title} ${pin.description} ${pin.altText}`.toLowerCase();
+    // Try to get board name (if on board page)
+    const boardEl = document.querySelector('[data-test-id="board-name"], h1');
+    if (boardEl && window.location.pathname.includes('/board/')) {
+      pin.board_name = boardEl.textContent || '';
+    }
 
-    if (pin.fullText.trim()) {
+    // Categorize based on keywords
+    const fullText = `${pin.title} ${pin.description} ${pin.alt_text}`.toLowerCase();
+    pin.category = categorizePin(fullText);
+
+    // Only add pins that have some content
+    if (pin.title || pin.description || pin.alt_text) {
       pins.push(pin);
     }
   });
 
-  // If we didn't find pins with the above selectors, try a more general approach
+  // If we didn't find pins with the above selectors, try images
   if (pins.length === 0) {
+    console.log('Trying fallback method with images...');
     const allImages = document.querySelectorAll('img[alt]');
     allImages.forEach(img => {
-      const altText = (img.alt || '').toLowerCase();
-      if (altText && altText.length > 5) {
+      const altText = img.alt || '';
+      if (altText && altText.length > 5 && !altText.includes('Pinterest')) {
+        const fullText = altText.toLowerCase();
         pins.push({
-          altText: altText,
-          fullText: altText
+          title: '',
+          description: '',
+          alt_text: altText,
+          board_name: '',
+          category: categorizePin(fullText)
         });
       }
     });
   }
 
+  if (pins.length === 0) {
+    throw new Error('No pins found. Try scrolling down to load more pins!');
+  }
+
+  console.log(`Extracted ${pins.length} pins`);
   return pins;
 }
 
-// Analyze pins against personality types
-function analyzeAesthetic(pins) {
-  const scores = {
-    techMinimalist: 0,
-    gymBaddie: 0,
-    pilatesPrincess: 0,
-    chaoticFood: 0,
-    professionalVibe: 0
+/**
+ * Categorize pin based on keywords
+ */
+function categorizePin(text) {
+  const categories = {
+    'home_decor': ['home', 'decor', 'interior', 'furniture', 'room', 'house', 'design', 'aesthetic'],
+    'food': ['food', 'recipe', 'cooking', 'baking', 'meal', 'dish', 'eat', 'breakfast', 'lunch', 'dinner'],
+    'fashion': ['fashion', 'outfit', 'style', 'clothing', 'wear', 'dress', 'shoes', 'accessories'],
+    'fitness': ['workout', 'fitness', 'exercise', 'gym', 'health', 'yoga', 'pilates', 'running'],
+    'beauty': ['beauty', 'makeup', 'skincare', 'hair', 'nails', 'cosmetics'],
+    'travel': ['travel', 'vacation', 'trip', 'destination', 'beach', 'mountain', 'adventure'],
+    'art': ['art', 'painting', 'drawing', 'illustration', 'creative', 'artist'],
+    'photography': ['photo', 'photography', 'camera', 'picture', 'aesthetic'],
+    'diy': ['diy', 'craft', 'handmade', 'project', 'tutorial', 'how to']
   };
 
-  const keywords = aestheticKeywords;
+  for (const [category, keywords] of Object.entries(categories)) {
+    if (keywords.some(keyword => text.includes(keyword))) {
+      return category;
+    }
+  }
 
-  pins.forEach(pin => {
-    const text = pin.fullText;
-
-    // Score each personality type
-    Object.keys(keywords).forEach(personality => {
-      const personalityKeywords = keywords[personality];
-      personalityKeywords.forEach(keyword => {
-        if (text.includes(keyword)) {
-          scores[personality]++;
-        }
-      });
-    });
-  });
-
-  // Calculate percentages
-  const total = Object.values(scores).reduce((a, b) => a + b, 0);
-
-  const percentages = {};
-  Object.keys(scores).forEach(personality => {
-    percentages[personality] = total > 0 ? Math.round((scores[personality] / total) * 100) : 0;
-  });
-
-  // Determine dominant personality
-  const sortedPersonalities = Object.entries(percentages)
-    .sort(([, a], [, b]) => b - a);
-
-  const dominantPersonality = sortedPersonalities[0][1] > 25
-    ? sortedPersonalities[0][0]
-    : 'balancedBaddie';
-
-  return {
-    scores: scores,
-    percentages: percentages,
-    dominantPersonality: dominantPersonality,
-    sortedPersonalities: sortedPersonalities
-  };
+  return 'other';
 }
 
-// Generate personalized roast
-function generateRoast(analysis) {
-  const personality = analysis.dominantPersonality;
-  const template = personalityTemplates[personality];
-
-  // Pick random roast from the personality
-  const randomRoast = template.roasts[Math.floor(Math.random() * template.roasts.length)];
-
-  return {
-    personalityName: template.name,
-    personalityDescription: template.description,
-    mainRoast: randomRoast,
-    vibeCheck: template.vibeCheck,
-    percentages: analysis.percentages,
-    breakdown: analysis.sortedPersonalities
-  };
-}
-
-// Initialize
-console.log('Quirk content script loaded');
+console.log('Quirk content script loaded!');
