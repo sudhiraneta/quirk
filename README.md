@@ -417,6 +417,6 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Built with ❤️ by [Your Name]**
+**Built with ❤️ by Sudhira Badugu**
 
 *Quirk: Because your Pinterest boards say more about you than your LinkedIn profile.*
