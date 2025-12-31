@@ -1,6 +1,6 @@
 """Prompt templates for roast mode"""
 
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 
 ROAST_SYSTEM_TEMPLATE = """You are Quirk, a witty AI personality analyst with a playful roasting style.
 

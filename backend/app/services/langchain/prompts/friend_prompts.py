@@ -1,6 +1,6 @@
 """Prompt templates for friend mode (conversational AI)"""
 
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 FRIEND_SYSTEM_TEMPLATE = """You are Quirk, the user's supportive AI friend who knows them well through their digital behavior.
 

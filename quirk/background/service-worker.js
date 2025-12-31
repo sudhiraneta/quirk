@@ -14,19 +14,37 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
 // Initialize user with backend
 async function initializeUser() {
+  console.log('🔵 initializeUser() called');
+
   try {
     // Check if user already exists
+    console.log('📦 Checking chrome.storage.local for existing UUID...');
     const { userUUID } = await chrome.storage.local.get(STORAGE_KEYS.USER_UUID);
 
     if (userUUID) {
-      console.log('User already initialized:', userUUID);
+      console.log('✅ User already initialized:', userUUID);
       return userUUID;
     }
 
+    console.log('⚠️ No existing UUID found, creating new user...');
+
+    // Log the API endpoint we're calling
+    const apiUrl = `${API_BASE_URL}/users/initialize`;
+    console.log('🌐 Calling API:', apiUrl);
+    console.log('📤 Request method: POST');
+    console.log('📤 Request body:', {
+      extension_version: chrome.runtime.getManifest().version
+    });
+
     // Create new user
-    const response = await fetch(`${API_BASE_URL}/users/initialize`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -36,20 +54,44 @@ async function initializeUser() {
       })
     });
 
+    console.log('📥 Response status:', response.status, response.statusText);
+    console.log('📥 Response ok:', response.ok);
+
     if (!response.ok) {
-      throw new Error(`Failed to initialize user: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('❌ API returned error status:', response.status);
+      console.error('❌ Error response body:', errorText);
+      throw new Error(`Failed to initialize user: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('📥 Response data:', data);
+
     const uuid = data.user_uuid;
+    console.log('🆔 New UUID generated:', uuid);
 
     // Save to storage
+    console.log('💾 Saving UUID to chrome.storage.local...');
     await chrome.storage.local.set({ [STORAGE_KEYS.USER_UUID]: uuid });
-    console.log('User initialized successfully:', uuid);
+    console.log('✅ User initialized successfully:', uuid);
 
     return uuid;
   } catch (error) {
-    console.error('Error initializing user:', error);
+    console.error('❌ ERROR in initializeUser():');
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+
+    // Check for specific error types
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      console.error('🚨 NETWORK ERROR: Cannot reach backend server');
+      console.error('🚨 Possible causes:');
+      console.error('   1. Backend server is not running on http://localhost:8000');
+      console.error('   2. CORS is blocking the request');
+      console.error('   3. Firewall or network issue');
+      console.error('🔧 Solution: Start backend with: cd backend && source venv/bin/activate && python -m app.main');
+    }
+
     throw error;
   }
 }

@@ -127,7 +127,7 @@ class Insight(BaseModel):
     category: str = Field(..., description="Insight category")
     observation: str = Field(..., description="Main observation")
     patterns: List[str] = Field(..., description="Identified patterns")
-    suggestions: List[str] = Field(..., description="Actionable suggestions")
+    psychological_drivers: str = Field(..., description="What motivates this behavior")
 
 
 class Trends(BaseModel):

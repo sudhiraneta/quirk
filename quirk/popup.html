@@ -46,7 +46,13 @@
       line-height: 1.5;
     }
 
-    button {
+    #mode-selection {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mode-btn {
       width: 100%;
       padding: 16px;
       background: white;
@@ -58,18 +64,28 @@
       cursor: pointer;
       transition: all 0.3s ease;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    button:hover {
+    .mode-desc {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.7;
+    }
+
+    .mode-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
 
-    button:active {
+    .mode-btn:active {
       transform: translateY(0);
     }
 
-    button:disabled {
+    .mode-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
@@ -180,10 +196,25 @@
     <p class="tagline">We see you. We know your vibe.</p>
 
     <div id="status">
-      Ready to analyze your Pinterest aesthetic?
+      Choose your analysis mode:
     </div>
 
-    <button id="activate">Roast My Pinterest</button>
+    <div id="mode-selection">
+      <button class="mode-btn" data-mode="roast">
+        🔥 Roast Mode
+        <span class="mode-desc">Get brutally honest vibes</span>
+      </button>
+
+      <button class="mode-btn" data-mode="self-discovery">
+        🧘 Self-Discovery
+        <span class="mode-desc">Deep insights about yourself</span>
+      </button>
+
+      <button class="mode-btn" data-mode="friend">
+        💬 Friend Mode
+        <span class="mode-desc">Chat about your interests</span>
+      </button>
+    </div>
 
     <div id="results" style="display: none;"></div>
   </div>

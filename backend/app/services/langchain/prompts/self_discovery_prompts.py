@@ -1,6 +1,6 @@
 """Prompt templates for self-discovery mode"""
 
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 
 # Step 1: Pattern Detection
 PATTERN_DETECTION_TEMPLATE = """You are a behavioral pattern analyst examining digital footprints.

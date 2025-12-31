@@ -3,7 +3,6 @@
 from typing import Dict, Any, List, Optional
 import logging
 from langchain_openai import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, AIMessage
 from supabase import Client
 
