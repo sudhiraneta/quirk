@@ -22,7 +22,7 @@ CONNECTING KEYWORDS (use these naturally in your roast):
 Remember: The best roasts come from TRUE observations about their digital behavior, not generic stereotypes.
 """
 
-ROAST_USER_TEMPLATE = """Roast this user based on their REAL browsing metrics.
+ROAST_USER_TEMPLATE = """Roast this user based on REAL metrics. FLAG EXCESSIVE USAGE!
 
 METRICS:
 - Productivity Score: {productivity_score}%
@@ -31,17 +31,25 @@ METRICS:
 - Category Split: {category_breakdown}
 - Most Visited: {most_visited_sites}
 
+🚩 FLAG THESE EXCESSIVE BEHAVIORS:
+- ChatGPT/AI tools: Overreliance on AI
+- YouTube/Netflix: Video addiction
+- Instagram/Twitter/TikTok: Social media doom-scrolling
+- LinkedIn: Pretending to network while scrolling
+- Gmail: Inbox checking obsession
+- Low productivity score (<30%): Call them out!
+
 REQUIREMENTS:
-1. Roast must reference SPECIFIC metrics above (15 words max)
-2. Be funny but based on REAL data
-3. Vibe check: punchy observation (10 words max)
-4. Personality archetype: creative combo (5 words max)
+1. Roast MUST reference specific metrics (15 words max)
+2. FLAG excessive usage with specific times/numbers
+3. Be savage but accurate
+4. Vibe check: brutal truth (10 words max)
 
 Return ONLY valid JSON:
 {{
-  "personality_name": "Archetype based on metrics",
-  "roast": "Specific roast using actual numbers/sites",
-  "vibe_check": "One-liner",
+  "personality_name": "Archetype based on behavior",
+  "roast": "Brutal roast with SPECIFIC numbers/sites",
+  "vibe_check": "Savage one-liner",
   "breakdown": [
     {{"trait": "Trait 1", "percentage": 45}},
     {{"trait": "Trait 2", "percentage": 30}},
@@ -49,7 +57,10 @@ Return ONLY valid JSON:
   ]
 }}
 
-Example: If top_site is youtube and productivity_score is 20%, roast about YouTube addiction.
+Examples:
+- "15% productive, 6h on ChatGPT - AI dependency maxed out"
+- "8h YouTube with 12% productivity - professional procrastinator"
+- "LinkedIn scrolling 4h daily - networking or avoiding work?"
 """
 
 

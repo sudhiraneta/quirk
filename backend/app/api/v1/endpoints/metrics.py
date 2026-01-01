@@ -199,18 +199,43 @@ def _fmt(ms: int) -> str:
 
 
 def _quick_insights(score: int, top_site: str) -> list:
-    """Generate 2-3 quick insights"""
+    """Generate 2-3 quick insights with FLAGS for excessive usage"""
     insights = []
 
+    # Productivity insight with flags
     if score > 60:
         insights.append(f"💻 {score}% productive - crushing it!")
     elif score > 30:
         insights.append(f"⚖️ {score}% productive - balanced")
     else:
-        insights.append(f"🎮 {score}% productive - chill mode")
+        insights.append(f"🚩 {score}% productive - mostly time-wasting!")
 
+    # Flag excessive usage of specific sites
     if top_site:
-        insights.append(f"📍 Top site: {top_site}")
+        site_lower = top_site.lower()
+
+        # Flag AI overreliance
+        if any(x in site_lower for x in ['chatgpt', 'claude', 'openai', 'bard']):
+            insights.append(f"🚩 Top site: {top_site} - AI dependency detected")
+
+        # Flag social media addiction
+        elif any(x in site_lower for x in ['instagram', 'twitter', 'tiktok', 'facebook']):
+            insights.append(f"🚩 Top site: {top_site} - social media addict")
+
+        # Flag video addiction
+        elif any(x in site_lower for x in ['youtube', 'netflix', 'twitch']):
+            insights.append(f"🚩 Top site: {top_site} - video binge mode")
+
+        # Flag LinkedIn scrolling
+        elif 'linkedin' in site_lower:
+            insights.append(f"🚩 Top site: {top_site} - fake networking alert")
+
+        # Flag email obsession
+        elif any(x in site_lower for x in ['gmail', 'mail', 'outlook']):
+            insights.append(f"🚩 Top site: {top_site} - inbox checking addiction")
+
+        else:
+            insights.append(f"📍 Top site: {top_site}")
 
     return insights
 
