@@ -159,15 +159,34 @@ def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = 
 
 
 def _quick_categorize(platform: str) -> str:
-    """Ultra-fast categorization"""
+    """
+    Ultra-fast categorization
+
+    IMPORTANT: Gmail, LinkedIn, browsing = NOT productive
+    Only actual coding/docs work counts as productive
+    """
     p = platform.lower()
 
-    if any(x in p for x in ['github', 'stack', 'code', 'dev']):
+    # Productive = ONLY actual work (coding, docs, tools)
+    if any(x in p for x in ['github', 'stackoverflow', 'vscode', 'gitlab', 'replit', 'codesandbox']):
         return 'productive'
-    if any(x in p for x in ['youtube', 'netflix', 'instagram', 'twitter', 'tiktok']):
+
+    # Docs/Tools = productive IF actively working
+    if any(x in p for x in ['notion', 'docs.google', 'sheets.google', 'trello', 'asana', 'figma']):
+        return 'productive'
+
+    # Entertainment (time-wasting)
+    if any(x in p for x in ['youtube', 'netflix', 'instagram', 'twitter', 'tiktok', 'facebook', 'reddit']):
         return 'entertainment'
-    if any(x in p for x in ['amazon', 'shop', 'ebay']):
+
+    # Shopping
+    if any(x in p for x in ['amazon', 'shop', 'ebay', 'walmart']):
         return 'shopping'
+
+    # Gmail, LinkedIn, browsing = OTHER (not productive!)
+    # Just loading/scrolling doesn't count as work
+    if any(x in p for x in ['gmail', 'mail', 'linkedin', 'outlook', 'calendar']):
+        return 'other'
 
     return 'other'
 

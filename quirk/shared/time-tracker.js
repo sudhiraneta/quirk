@@ -31,20 +31,20 @@ const PRODUCTIVITY_CATEGORIES = {
     emoji: '🛠️'
   },
 
-  // Email
+  // Email (NOT productive - just browsing inbox)
   EMAIL: {
     keywords: ['gmail', 'outlook', 'mail', 'inbox'],
     platforms: ['mail.google.com', 'outlook.com', 'yahoo.com/mail'],
-    category: 'neutral',
+    category: 'other',  // Changed from 'neutral' - not productive
     subcategory: 'communication',
     emoji: '📧'
   },
 
-  // Social Media
+  // Social Media (LinkedIn included - mostly scrolling, not productive)
   SOCIAL_MEDIA: {
     keywords: ['instagram', 'twitter', 'facebook', 'tiktok', 'snapchat', 'linkedin', 'reddit'],
     platforms: ['instagram.com', 'twitter.com', 'x.com', 'facebook.com', 'tiktok.com', 'linkedin.com', 'reddit.com'],
-    category: 'entertainment',
+    category: 'other',  // Changed from 'entertainment' - just browsing
     subcategory: 'social',
     emoji: '📱'
   },
