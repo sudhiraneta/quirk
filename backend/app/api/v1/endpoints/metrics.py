@@ -16,18 +16,19 @@ router = APIRouter()
 
 # Cache metrics for 5 minutes to reduce DB load
 @lru_cache(maxsize=100)
-def _cached_metrics_with_days(user_uuid: str, days: int, cache_key: str):
-    """Cached version of metrics calculation with day filter"""
-    return _fetch_and_calculate_metrics(user_uuid, days)
+def _cached_metrics_with_tz(user_uuid: str, days: int, timezone: str, cache_key: str):
+    """Cached version of metrics calculation with timezone"""
+    return _fetch_and_calculate_metrics(user_uuid, days, timezone)
 
 
 @router.get("/{user_uuid}")
 async def get_metrics(
     user_uuid: str,
-    days: int = None  # Optional: 1 (today), 3 (returning users), 7 (full history)
+    days: int = None,  # Optional: 1 (today), 3 (returning users), 7 (full history)
+    timezone: str = "UTC"  # User's timezone (e.g., "America/New_York", "Asia/Kolkata")
 ) -> Dict[str, Any]:
     """
-    FAST metrics endpoint with smart time ranges
+    FAST metrics endpoint with timezone support
 
     Free tier logic:
     - New users: Show today only (days=1)
@@ -37,6 +38,7 @@ async def get_metrics(
 
     Query params:
     - days: 1 (today), 3 (default), 7 (full week)
+    - timezone: IANA timezone (e.g., "America/Los_Angeles")
     """
     try:
         import time as time_mod
@@ -46,10 +48,10 @@ async def get_metrics(
             # Check if new vs returning user
             days = await _get_default_days(user_uuid)
 
-        # Cache per user + days + 5min window
-        cache_key = f"{user_uuid}_{days}_{int(time_mod.time() // 300)}"
+        # Cache per user + days + timezone + 5min window
+        cache_key = f"{user_uuid}_{days}_{timezone}_{int(time_mod.time() // 300)}"
 
-        metrics = _cached_metrics_with_days(user_uuid, days, cache_key)
+        metrics = _cached_metrics_with_tz(user_uuid, days, timezone, cache_key)
         return metrics
 
     except Exception as e:
@@ -86,14 +88,24 @@ async def _get_default_days(user_uuid: str) -> int:
         return 3  # Default to 3 days
 
 
-def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3) -> Dict[str, Any]:
-    """Fast metrics calculation with day filter"""
+def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = "UTC") -> Dict[str, Any]:
+    """Fast metrics calculation with timezone support"""
     try:
         from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
         db = get_supabase_client()
 
-        # Calculate cutoff date
-        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        # Get current time in user's timezone
+        try:
+            user_tz = ZoneInfo(timezone)
+        except Exception:
+            user_tz = ZoneInfo("UTC")  # Fallback to UTC
+
+        now_local = datetime.now(user_tz)
+
+        # Calculate cutoff date (beginning of day N days ago in user's timezone)
+        cutoff_local = (now_local - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+        cutoff = cutoff_local.isoformat()
 
         # OPTIMIZED: Get records from last N days, limit 100
         result = db.table("browsing_history").select(
