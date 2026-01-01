@@ -205,6 +205,10 @@ export class ActivityDetector {
 
   static generateInsights(metrics) {
     const insights = [];
+    const THIRTY_MIN = 30 * 60 * 1000;  // 30 minutes in ms
+    const ONE_HOUR = 60 * 60 * 1000;
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const THREE_HOURS = 3 * 60 * 60 * 1000;
 
     // Email insight
     const emailTotal = metrics.emailWriting + metrics.emailBrowsing;
@@ -212,19 +216,25 @@ export class ActivityDetector {
       const writingPercent = (metrics.emailWriting / emailTotal) * 100;
       if (writingPercent > 60) {
         insights.push('✅ Actually writing emails, not just checking inbox');
+      } else if (emailTotal > ONE_HOUR) {
+        insights.push('🚩 >1h email browsing - inbox addiction detected');
       } else {
         insights.push('🚩 Mostly checking inbox, minimal actual email work');
       }
     }
 
-    // LinkedIn insight
+    // LinkedIn insight with TIME LIMIT
     const linkedinTotal = metrics.linkedinNetworking + metrics.linkedinScrolling;
     if (linkedinTotal > 0) {
       const networkingPercent = (metrics.linkedinNetworking / linkedinTotal) * 100;
-      if (networkingPercent > 50) {
-        insights.push('✅ Productive LinkedIn use - messaging/job search');
+
+      // >30min browsing = EXCESSIVE (unless job hunting)
+      if (metrics.linkedinScrolling > THIRTY_MIN && networkingPercent < 50) {
+        insights.push('🚩 LinkedIn >30min/day - scrolling not networking. Goal: Job search?');
+      } else if (networkingPercent > 50) {
+        insights.push('✅ Productive LinkedIn - messaging/job applications');
       } else {
-        insights.push('🚩 LinkedIn scrolling detected - not networking');
+        insights.push('⚠️ LinkedIn time - define your goal (job search vs browsing)');
       }
     }
 

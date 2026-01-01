@@ -31,13 +31,19 @@ METRICS:
 - Category Split: {category_breakdown}
 - Most Visited: {most_visited_sites}
 
-🚩 FLAG THESE EXCESSIVE BEHAVIORS:
-- ChatGPT/AI tools: Overreliance on AI
-- YouTube/Netflix: Video addiction
-- Instagram/Twitter/TikTok: Social media doom-scrolling
-- LinkedIn: Pretending to network while scrolling
-- Gmail: Inbox checking obsession
+🚩 FLAG THESE EXCESSIVE BEHAVIORS (with TIME LIMITS):
+- LinkedIn: >30min/day = excessive unless applying for jobs
+- ChatGPT/AI: >2h/day = AI dependency
+- YouTube/Netflix: >3h/day = video addiction
+- Instagram/Twitter/TikTok: >1h/day = doom-scrolling
+- Gmail: >1h/day = inbox checking obsession
 - Low productivity score (<30%): Call them out!
+
+ASK ABOUT GOALS:
+Based on top sites, question if time aligns with goals:
+- LinkedIn time → "Looking for jobs or just scrolling?"
+- ChatGPT hours → "Learning to code or avoiding real work?"
+- YouTube binge → "What's the goal here?"
 
 REQUIREMENTS:
 1. Roast MUST reference specific metrics (15 words max)
