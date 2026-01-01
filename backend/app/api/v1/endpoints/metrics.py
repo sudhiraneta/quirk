@@ -16,27 +16,40 @@ router = APIRouter()
 
 # Cache metrics for 5 minutes to reduce DB load
 @lru_cache(maxsize=100)
-def _cached_metrics(user_uuid: str, cache_key: str):
-    """Cached version of metrics calculation"""
-    return _fetch_and_calculate_metrics(user_uuid)
+def _cached_metrics_with_days(user_uuid: str, days: int, cache_key: str):
+    """Cached version of metrics calculation with day filter"""
+    return _fetch_and_calculate_metrics(user_uuid, days)
 
 
 @router.get("/{user_uuid}")
-async def get_metrics(user_uuid: str) -> Dict[str, Any]:
+async def get_metrics(
+    user_uuid: str,
+    days: int = None  # Optional: 1 (today), 3 (returning users), 7 (full history)
+) -> Dict[str, Any]:
     """
-    FAST metrics endpoint - optimized for speed
+    FAST metrics endpoint with smart time ranges
 
-    Returns:
-    - Top sites with time spent
-    - Productivity score
-    - Category breakdown
-    - Quick insights
+    Free tier logic:
+    - New users: Show today only (days=1)
+    - Returning users: Show last 3 days by default
+    - If requested: Show full 7 days
+    - Data older than 7 days is auto-deleted
+
+    Query params:
+    - days: 1 (today), 3 (default), 7 (full week)
     """
     try:
         import time as time_mod
-        cache_key = f"{user_uuid}_{int(time_mod.time() // 300)}"  # 5min cache
 
-        metrics = _cached_metrics(user_uuid, cache_key)
+        # Determine days to show
+        if days is None:
+            # Check if new vs returning user
+            days = await _get_default_days(user_uuid)
+
+        # Cache per user + days + 5min window
+        cache_key = f"{user_uuid}_{days}_{int(time_mod.time() // 300)}"
+
+        metrics = _cached_metrics_with_days(user_uuid, days, cache_key)
         return metrics
 
     except Exception as e:
@@ -44,17 +57,50 @@ async def get_metrics(user_uuid: str) -> Dict[str, Any]:
         return _empty_metrics()
 
 
-def _fetch_and_calculate_metrics(user_uuid: str) -> Dict[str, Any]:
-    """Fast metrics calculation - limit 100 records"""
+async def _get_default_days(user_uuid: str) -> int:
+    """
+    Smart default: 1 for new users, 3 for returning users
+    New user = no data older than 1 day
+    """
     try:
         db = get_supabase_client()
 
-        # OPTIMIZED: Only get last 100 records, ordered by last_visit
+        # Check oldest browsing data
+        result = db.table("browsing_history").select("last_visit").eq(
+            "user_uuid", user_uuid
+        ).order("last_visit", desc=False).limit(1).execute()
+
+        if not result.data:
+            return 1  # Brand new user - today only
+
+        from datetime import datetime, timedelta
+        oldest = datetime.fromisoformat(result.data[0]["last_visit"])
+        days_ago = (datetime.now() - oldest).days
+
+        if days_ago < 1:
+            return 1  # New user - show today
+        else:
+            return 3  # Returning user - show last 3 days
+
+    except Exception:
+        return 3  # Default to 3 days
+
+
+def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3) -> Dict[str, Any]:
+    """Fast metrics calculation with day filter"""
+    try:
+        from datetime import datetime, timedelta
+        db = get_supabase_client()
+
+        # Calculate cutoff date
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+        # OPTIMIZED: Get records from last N days, limit 100
         result = db.table("browsing_history").select(
             "url, platform, category, visit_count, time_spent_seconds, last_visit"
-        ).eq("user_uuid", user_uuid).order(
-            "last_visit", desc=True
-        ).limit(100).execute()
+        ).eq("user_uuid", user_uuid).gte(
+            "last_visit", cutoff
+        ).order("last_visit", desc=True).limit(100).execute()
 
         if not result.data or len(result.data) == 0:
             return _empty_metrics()
