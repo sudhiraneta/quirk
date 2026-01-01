@@ -3,8 +3,8 @@
  */
 
 // API Configuration
-export const API_BASE_URL = 'http://localhost:8000/api/v1';  // Change to production URL when deploying
-// export const API_BASE_URL = 'https://your-api.railway.app/api/v1';
+export const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';  // Production API
+// export const API_BASE_URL = 'http://localhost:8000/api/v1';  // Local development
 
 // Storage Keys
 export const STORAGE_KEYS = {

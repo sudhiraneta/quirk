@@ -3,7 +3,7 @@
  * Main UI for triggering personality analysis with multiple modes
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';  // Change for production
+const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';  // Production API
 
 document.addEventListener('DOMContentLoaded', function() {
   const modeButtons = document.querySelectorAll('.mode-btn');

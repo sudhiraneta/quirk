@@ -86,7 +86,7 @@ async function initializeUser() {
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       console.error('🚨 NETWORK ERROR: Cannot reach backend server');
       console.error('🚨 Possible causes:');
-      console.error('   1. Backend server is not running on http://localhost:8000');
+      console.error('   1. Backend server is not reachable (check if API is down)');
       console.error('   2. CORS is blocking the request');
       console.error('   3. Firewall or network issue');
       console.error('🔧 Solution: Start backend with: cd backend && source venv/bin/activate && python -m app.main');
