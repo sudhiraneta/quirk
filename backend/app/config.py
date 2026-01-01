@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 250  # Reduced for concise 5-7 line outputs
 
     # Data Collection
-    browsing_history_days: int = 30
-    max_pins_for_analysis: int = 500
+    browsing_history_days: int = 7  # Reduced from 30 for faster queries
+    max_pins_for_analysis: int = 100  # Reduced from 500 for speed
 
     class Config:
         env_file = ".env"

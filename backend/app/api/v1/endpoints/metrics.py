@@ -89,64 +89,57 @@ async def _get_default_days(user_uuid: str) -> int:
 
 
 def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = "UTC") -> Dict[str, Any]:
-    """Fast metrics calculation with timezone support"""
+    """ULTRA-FAST metrics with minimal processing"""
     try:
         from datetime import datetime, timedelta
         from zoneinfo import ZoneInfo
         db = get_supabase_client()
 
-        # Get current time in user's timezone
+        # Calculate cutoff
         try:
             user_tz = ZoneInfo(timezone)
         except Exception:
-            user_tz = ZoneInfo("UTC")  # Fallback to UTC
+            user_tz = ZoneInfo("UTC")
 
         now_local = datetime.now(user_tz)
-
-        # Calculate cutoff date (beginning of day N days ago in user's timezone)
         cutoff_local = (now_local - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
         cutoff = cutoff_local.isoformat()
 
-        # OPTIMIZED: Get records from last N days, limit 100
+        # SINGLE OPTIMIZED QUERY - limit to 50 for speed
         result = db.table("browsing_history").select(
-            "url, platform, category, visit_count, time_spent_seconds, last_visit"
+            "platform, visit_count, time_spent_seconds"
         ).eq("user_uuid", user_uuid).gte(
             "last_visit", cutoff
-        ).order("last_visit", desc=True).limit(100).execute()
+        ).limit(50).execute()
 
-        if not result.data or len(result.data) == 0:
+        if not result.data:
             return _empty_metrics()
 
-        # FAST aggregation
+        # FAST aggregation (no sorting, minimal loops)
         sites = {}
-        categories = {"productive": 0, "entertainment": 0, "shopping": 0, "other": 0}
+        cats = {"productive": 0, "entertainment": 0, "shopping": 0, "other": 0}
         total_time = 0
         total_visits = 0
 
         for item in result.data:
-            platform = item.get("platform", "unknown")
-            visits = item.get("visit_count", 1)
-            time_ms = item.get("time_spent_seconds", 0) * 1000
+            p = item.get("platform", "unknown")
+            v = item.get("visit_count", 1)
+            t = item.get("time_spent_seconds", 0) * 1000
 
-            total_visits += visits
-            total_time += time_ms
+            total_visits += v
+            total_time += t
 
-            # Aggregate by platform
-            if platform not in sites:
-                sites[platform] = {"visits": 0, "time": 0, "cat": _quick_categorize(platform)}
+            if p not in sites:
+                sites[p] = {"v": 0, "t": 0, "c": _quick_categorize(p)}
 
-            sites[platform]["visits"] += visits
-            sites[platform]["time"] += time_ms
+            sites[p]["v"] += v
+            sites[p]["t"] += t
+            cats[sites[p]["c"]] = cats.get(sites[p]["c"], 0) + t
 
-            # Category totals
-            cat = sites[platform]["cat"]
-            categories[cat] = categories.get(cat, 0) + time_ms
+        # Top 3 sites only
+        top = sorted(sites.items(), key=lambda x: x[1]["t"], reverse=True)[:3]
 
-        # Top 5 sites only (FAST)
-        top_sites = sorted(sites.items(), key=lambda x: x[1]["time"], reverse=True)[:5]
-
-        # Calculate productivity score
-        prod_score = int((categories.get("productive", 0) / total_time * 100)) if total_time > 0 else 0
+        prod_score = int((cats.get("productive", 0) / total_time * 100)) if total_time > 0 else 0
 
         return {
             "overview": {
@@ -155,28 +148,13 @@ def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = 
                 "total_time": _fmt(total_time),
                 "productivity_score": prod_score
             },
-            "top_sites": [
-                {
-                    "site": site,
-                    "time": _fmt(data["time"]),
-                    "visits": data["visits"],
-                    "category": data["cat"]
-                }
-                for site, data in top_sites
-            ],
-            "categories": {
-                cat: {
-                    "time": _fmt(time_val),
-                    "percent": int((time_val / total_time * 100)) if total_time > 0 else 0
-                }
-                for cat, time_val in categories.items()
-                if time_val > 0
-            },
-            "insights": _quick_insights(prod_score, top_sites[0][0] if top_sites else "")
+            "top_sites": [{"site": s, "time": _fmt(d["t"]), "visits": d["v"], "category": d["c"]} for s, d in top],
+            "categories": {c: {"time": _fmt(tv), "percent": int((tv / total_time * 100)) if total_time > 0 else 0} for c, tv in cats.items() if tv > 0},
+            "insights": _quick_insights(prod_score, top[0][0] if top else "")
         }
 
     except Exception as e:
-        logger.error(f"Metrics calc error: {e}")
+        logger.error(f"Metrics error: {e}")
         return _empty_metrics()
 
 
