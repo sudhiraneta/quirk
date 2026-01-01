@@ -45,83 +45,89 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function displayMetrics(data) {
     const overview = data.overview || {};
+    const aggregate = data.aggregate || {};
     const topSites = data.top_sites || [];
-    const categories = data.categories || {};
     const insights = data.insights || [];
 
     let html = '';
 
-    // Productivity Score (Big Number)
+    // Total Active Hours
     html += `
-      <div class="metric-card">
-        <div class="big-number">${overview.productivity_score || 0}%</div>
-        <div class="big-label">PRODUCTIVITY SCORE</div>
+      <div class="section">
+        <div class="big-stat">
+          <div class="big-number">${overview.total_time || '0m'}</div>
+          <div class="big-label">TOTAL ACTIVE TIME</div>
+        </div>
       </div>
     `;
+
+    // Aggregate: Productive vs Doomscrolling (MAIN CHART)
+    if (aggregate.productive || aggregate.doomscrolling) {
+      const prod = aggregate.productive || {};
+      const doom = aggregate.doomscrolling || {};
+      const neutral = aggregate.neutral || {};
+
+      html += `
+        <div class="section">
+          <div class="section-title">Time Breakdown</div>
+
+          <div style="margin: 20px 0;">
+            <div class="aggregate-bar">
+              <div class="bar-segment bar-productive" style="width: ${prod.percent || 0}%"></div>
+              <div class="bar-segment bar-doomscrolling" style="width: ${doom.percent || 0}%"></div>
+              <div class="bar-segment bar-neutral" style="width: ${neutral.percent || 0}%"></div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">💻 Productive</span>
+            <span class="metric-value">${prod.time || '0m'} (${prod.percent || 0}%)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">📱 Doomscrolling</span>
+            <span class="metric-value">${doom.time || '0m'} (${doom.percent || 0}%)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">⚪ Neutral</span>
+            <span class="metric-value">${neutral.time || '0m'} (${neutral.percent || 0}%)</span>
+          </div>
+        </div>
+      `;
+    }
 
     // Insights
     if (insights.length > 0) {
+      html += `<div class="section">`;
       insights.forEach(insight => {
         html += `<div class="insight">${insight}</div>`;
       });
-    }
-
-    // Overview
-    html += `
-      <div class="metric-card">
-        <div class="metric-title">Overview</div>
-        <div class="metric-row">
-          <span class="metric-label">Total Time</span>
-          <span class="metric-value">${overview.total_time || '0m'}</span>
-        </div>
-        <div class="metric-row">
-          <span class="metric-label">Sites Visited</span>
-          <span class="metric-value">${overview.total_sites || 0}</span>
-        </div>
-        <div class="metric-row">
-          <span class="metric-label">Total Visits</span>
-          <span class="metric-value">${overview.total_visits || 0}</span>
-        </div>
-      </div>
-    `;
-
-    // Top Sites
-    if (topSites.length > 0) {
-      html += `
-        <div class="metric-card">
-          <div class="metric-title">Top Sites</div>
-      `;
-
-      topSites.forEach(site => {
-        const catClass = `cat-${site.category}`;
-        html += `
-          <div class="top-site">
-            <div>
-              <div class="site-name">${site.site}</div>
-              <div class="site-time">${site.time} • ${site.visits} visits</div>
-            </div>
-            <span class="category-badge ${catClass}">${site.category}</span>
-          </div>
-        `;
-      });
-
       html += `</div>`;
     }
 
-    // Category Breakdown
-    if (Object.keys(categories).length > 0) {
+    // Top Sites - Emphasize VISIT COUNTS
+    if (topSites.length > 0) {
       html += `
-        <div class="metric-card">
-          <div class="metric-title">Time by Category</div>
+        <div class="section">
+          <div class="section-title">Top Sites (by time)</div>
       `;
 
-      Object.entries(categories).forEach(([cat, data]) => {
+      topSites.forEach((site, idx) => {
+        const catEmoji = {
+          'productive': '💻',
+          'entertainment': '📱',
+          'shopping': '🛒',
+          'other': '🌐',
+          'neutral': '⚪'
+        };
+        const emoji = catEmoji[site.category] || '🌐';
+
         html += `
-          <div class="metric-row">
-            <span class="metric-label">${cat}</span>
-            <span class="metric-value">${data.time} (${data.percent}%)</span>
+          <div class="site-item">
+            <div class="site-name">${emoji} ${site.site}</div>
+            <div class="site-meta">
+              <strong>${site.visits} opens</strong> • ${site.time} (${site.time_percent}% of total)
+            </div>
           </div>
-          <div class="category-bar" style="width: ${data.percent}%"></div>
         `;
       });
 

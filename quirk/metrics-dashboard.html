@@ -136,6 +136,33 @@
     .back-link:hover {
       text-decoration: underline;
     }
+
+    /* Aggregate Bar Chart */
+    .aggregate-bar {
+      display: flex;
+      width: 100%;
+      height: 40px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f0f0f0;
+    }
+
+    .bar-segment {
+      height: 100%;
+      transition: all 0.3s ease;
+    }
+
+    .bar-productive {
+      background: #10b981;  /* Green */
+    }
+
+    .bar-doomscrolling {
+      background: #ef4444;  /* Red */
+    }
+
+    .bar-neutral {
+      background: #6b7280;  /* Gray */
+    }
   </style>
 </head>
 <body>

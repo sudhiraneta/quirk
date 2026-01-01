@@ -136,19 +136,49 @@ def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = 
             sites[p]["t"] += t
             cats[sites[p]["c"]] = cats.get(sites[p]["c"], 0) + t
 
-        # Top 3 sites only
-        top = sorted(sites.items(), key=lambda x: x[1]["t"], reverse=True)[:3]
+        # Top 10 sites for detailed view
+        top = sorted(sites.items(), key=lambda x: x[1]["t"], reverse=True)[:10]
 
         prod_score = int((cats.get("productive", 0) / total_time * 100)) if total_time > 0 else 0
+
+        # Aggregate productive vs doomscrolling
+        productive_time = cats.get("productive", 0)
+        doomscrolling_time = cats.get("entertainment", 0) + cats.get("other", 0)
+        neutral_time = cats.get("neutral", 0) + cats.get("shopping", 0)
 
         return {
             "overview": {
                 "total_sites": len(sites),
                 "total_visits": total_visits,
                 "total_time": _fmt(total_time),
+                "total_time_ms": total_time,
                 "productivity_score": prod_score
             },
-            "top_sites": [{"site": s, "time": _fmt(d["t"]), "visits": d["v"], "category": d["c"]} for s, d in top],
+            "aggregate": {
+                "productive": {
+                    "time": _fmt(productive_time),
+                    "time_ms": productive_time,
+                    "percent": int((productive_time / total_time * 100)) if total_time > 0 else 0
+                },
+                "doomscrolling": {
+                    "time": _fmt(doomscrolling_time),
+                    "time_ms": doomscrolling_time,
+                    "percent": int((doomscrolling_time / total_time * 100)) if total_time > 0 else 0
+                },
+                "neutral": {
+                    "time": _fmt(neutral_time),
+                    "time_ms": neutral_time,
+                    "percent": int((neutral_time / total_time * 100)) if total_time > 0 else 0
+                }
+            },
+            "top_sites": [{
+                "site": s,
+                "time": _fmt(d["t"]),
+                "time_ms": d["t"],
+                "visits": d["v"],
+                "category": d["c"],
+                "time_percent": int((d["t"] / total_time * 100)) if total_time > 0 else 0
+            } for s, d in top],
             "categories": {c: {"time": _fmt(tv), "percent": int((tv / total_time * 100)) if total_time > 0 else 0} for c, tv in cats.items() if tv > 0},
             "insights": _quick_insights(prod_score, top[0][0] if top else "")
         }
@@ -243,7 +273,12 @@ def _quick_insights(score: int, top_site: str) -> list:
 def _empty_metrics():
     """Empty state"""
     return {
-        "overview": {"total_sites": 0, "total_visits": 0, "total_time": "0m", "productivity_score": 0},
+        "overview": {"total_sites": 0, "total_visits": 0, "total_time": "0m", "total_time_ms": 0, "productivity_score": 0},
+        "aggregate": {
+            "productive": {"time": "0m", "time_ms": 0, "percent": 0},
+            "doomscrolling": {"time": "0m", "time_ms": 0, "percent": 0},
+            "neutral": {"time": "0m", "time_ms": 0, "percent": 0}
+        },
         "top_sites": [],
         "categories": {},
         "insights": ["📊 No data yet - start browsing!"]

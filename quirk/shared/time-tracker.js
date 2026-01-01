@@ -3,6 +3,8 @@
  * Core metrics engine for Quirk
  */
 
+import { ActivityDetector } from './activity-detector.js';
+
 const PRODUCTIVITY_CATEGORIES = {
   // Work & Development
   CODING: {
