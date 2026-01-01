@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, STORAGE_KEYS } from '../shared/constants.js';
+import { collectBrowsingHistory, getBrowsingAnalytics } from '../shared/browsing-tracker.js';
 
 // Initialize user on extension install
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -122,6 +123,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (request.action === 'collectAndSendBrowsingData') {
+    collectAndSendBrowsingData()
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'getBrowsingAnalytics') {
+    collectBrowsingHistory(30)
+      .then(data => {
+        const analytics = getBrowsingAnalytics(data);
+        sendResponse({ success: true, analytics });
+      })
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 // Send pins to backend
@@ -147,6 +165,45 @@ async function sendPinsToBackend(pins) {
     return await response.json();
   } catch (error) {
     console.error('Error sending pins to backend:', error);
+    throw error;
+  }
+}
+
+// Collect and send browsing data to backend
+async function collectAndSendBrowsingData() {
+  try {
+    console.log('📊 Collecting browsing history...');
+    const uuid = await getUserUUID();
+
+    // Collect last 30 days of browsing
+    const browsingData = await collectBrowsingHistory(30);
+    console.log(`📊 Collected ${browsingData.length} browsing items`);
+
+    if (browsingData.length === 0) {
+      return { message: 'No browsing data to send' };
+    }
+
+    // Send to backend
+    const response = await fetch(`${API_BASE_URL}/browsing/history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_uuid: uuid,
+        browsing_data: browsingData
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to send browsing data: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Browsing data sent successfully');
+    return result;
+  } catch (error) {
+    console.error('Error sending browsing data:', error);
     throw error;
   }
 }

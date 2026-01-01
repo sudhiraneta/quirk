@@ -36,64 +36,59 @@ Return your analysis as JSON:
 """
 
 # Step 2: Insight Generation
-INSIGHT_GENERATION_TEMPLATE = """You are a compassionate psychologist providing self-discovery insights.
+INSIGHT_GENERATION_TEMPLATE = """Provide BRIEF self-discovery insights. Keep each insight to 1-2 sentences max.
 
-DETECTED PATTERNS:
+PATTERNS:
 {patterns}
 
-FOCUS AREAS: {focus_areas}
+FOCUS: {focus_areas}
 
-TASK: Generate deep psychological insights that:
-1. Explain what these patterns reveal about their personality and values
-2. Connect patterns to potential motivations, needs, or fears
-3. Identify cognitive biases or blind spots (gently)
-4. Highlight strengths and growth opportunities
+TASK: Generate 3-4 SHORT insights. Each insight should be:
+- 1-2 sentences total
+- Specific to their actual behavior
+- Actionable, not generic
 
-Be specific, evidence-based, and constructive. Avoid generic advice like "be more mindful."
-
-Return insights as JSON organized by category:
+Return as JSON:
 {{
   "insights": [
     {{
-      "category": "Category name (e.g., Digital Habits, Career Aspirations)",
-      "observation": "Main insight about what this reveals",
-      "patterns": ["supporting pattern 1", "supporting pattern 2"],
-      "psychological_drivers": "What motivates this behavior"
-    }},
-    ...
+      "category": "Category (2-3 words)",
+      "observation": "One short sentence about what this reveals",
+      "patterns": ["pattern1", "pattern2"],
+      "psychological_drivers": "One short sentence on motivation"
+    }}
   ]
 }}
+
+Keep it CONCISE. Quality over quantity.
 """
 
 # Step 3: Suggestion Generation
-SUGGESTION_GENERATION_TEMPLATE = """You are a personal development coach creating actionable steps.
+SUGGESTION_GENERATION_TEMPLATE = """Create SHORT, specific action items. 1 sentence each.
 
 INSIGHTS:
 {insights}
 
-USER'S DIGITAL BEHAVIOR PATTERNS:
+PATTERNS:
 {patterns_summary}
 
-TASK: Create specific, actionable suggestions that:
-1. Are concrete and achievable (not vague like "be more mindful")
-2. Leverage their existing interests and patterns
-3. Address identified growth areas
-4. Include next steps or resources when relevant
-5. Are personalized to their actual digital behavior
-
-Provide 5-7 suggestions with clear rationale.
+TASK: Provide 3-5 BRIEF action items:
+- Each suggestion: 1 sentence max
+- Specific and actionable
+- Based on their actual behavior
 
 Return as JSON:
 {{
   "action_items": [
     {{
-      "suggestion": "Specific actionable suggestion",
-      "rationale": "Why this matters based on their patterns",
-      "category": "Category (e.g., career, wellness, relationships)"
-    }},
-    ...
+      "suggestion": "One specific action (10-15 words)",
+      "rationale": "Why (1 short sentence)",
+      "category": "Category"
+    }}
   ]
 }}
+
+Keep it SHORT and ACTIONABLE.
 """
 
 # Trend Analysis

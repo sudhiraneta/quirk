@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str
-    openai_model: str = "gpt-4o"
+    openai_model: str = "gpt-4o-mini"  # Faster model for better latency
 
     # Supabase
     supabase_url: str
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # LLM Settings
     llm_temperature: float = 0.7
-    llm_max_tokens: int = 1000
+    llm_max_tokens: int = 250  # Reduced for concise 5-7 line outputs
 
     # Data Collection
     browsing_history_days: int = 30

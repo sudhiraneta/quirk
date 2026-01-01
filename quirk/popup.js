@@ -1,17 +1,31 @@
 /**
  * Quirk Extension Popup
- * Main UI for triggering personality analysis with multiple modes
+ * Main UI for triggering personality analysis with browsing analytics
  */
 
-const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';  // Production API
+const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   const modeButtons = document.querySelectorAll('.mode-btn');
   const statusEl = document.getElementById('status');
   const resultsEl = document.getElementById('results');
-  const modeSelectionEl = document.getElementById('mode-selection');
+  const analyticsBtn = document.getElementById('view-analytics');
+  const analyticsDisplay = document.getElementById('analytics-display');
 
-  // Add click handlers to all mode buttons
+  // Auto-sync browsing data on popup open
+  syncBrowsingData();
+
+  // View analytics button
+  analyticsBtn.addEventListener('click', async () => {
+    if (analyticsDisplay.style.display === 'none') {
+      await showBrowsingAnalytics();
+    } else {
+      analyticsDisplay.style.display = 'none';
+      analyticsBtn.textContent = '📊 View Browsing Analytics';
+    }
+  });
+
+  // Mode buttons
   modeButtons.forEach(btn => {
     btn.addEventListener('click', async () => {
       const mode = btn.dataset.mode;
@@ -19,225 +33,257 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Sync browsing data to backend
+  async function syncBrowsingData() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'collectAndSendBrowsingData'
+      });
+      console.log('✅ Browsing data synced:', response);
+    } catch (error) {
+      console.log('Browsing sync skipped:', error.message);
+    }
+  }
+
+  // Show browsing analytics
+  async function showBrowsingAnalytics() {
+    statusEl.innerHTML = '<div class="loading">📊 Loading analytics...</div>';
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'getBrowsingAnalytics'
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+
+      const analytics = response.analytics;
+
+      let html = `
+        <div class="analytics-section">
+          <div class="analytics-title">Browsing Overview (30 days)</div>
+          <div class="stat-row">
+            <span class="stat-label">Total Sites</span>
+            <span class="stat-value">${analytics.total_sites}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Total Visits</span>
+            <span class="stat-value">${analytics.total_visits}</span>
+          </div>
+        </div>
+      `;
+
+      // Top platforms
+      if (analytics.top_platforms.length > 0) {
+        html += `
+          <div class="analytics-section">
+            <div class="analytics-title">Top Platforms</div>
+        `;
+        analytics.top_platforms.slice(0, 5).forEach(item => {
+          html += `
+            <div class="stat-row">
+              <span class="stat-label">${item.platform}</span>
+              <span class="stat-value">${item.visit_count} visits (${item.percentage}%)</span>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      // Daily habits
+      if (analytics.daily_habits.length > 0) {
+        html += `
+          <div class="analytics-section">
+            <div class="analytics-title">Daily Habits</div>
+        `;
+        analytics.daily_habits.slice(0, 5).forEach(habit => {
+          html += `
+            <div class="stat-row">
+              <span class="stat-label">${habit.site}</span>
+              <span class="stat-value">${habit.visit_count} visits</span>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      // Category breakdown
+      if (analytics.top_categories.length > 0) {
+        html += `
+          <div class="analytics-section">
+            <div class="analytics-title">Categories</div>
+        `;
+        analytics.top_categories.forEach(cat => {
+          html += `
+            <div class="stat-row">
+              <span class="stat-label">${cat.category}</span>
+              <span class="stat-value">${cat.percentage}%</span>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      analyticsDisplay.innerHTML = html;
+      analyticsDisplay.style.display = 'block';
+      analyticsBtn.textContent = '❌ Hide Analytics';
+      statusEl.innerHTML = '';
+
+    } catch (error) {
+      statusEl.innerHTML = `<div class="error">Analytics unavailable: ${error.message}</div>`;
+    }
+  }
+
+  // Run personality analysis
   async function runAnalysis(mode) {
     try {
-      // Get current tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
       // Check if we're on Pinterest
       if (!tab.url.includes('pinterest.com')) {
-        statusEl.innerHTML = '<div class="error">⚠️ Please open Pinterest first!<br>Go to pinterest.com and try again.</div>';
+        statusEl.innerHTML = '<div class="error">⚠️ Open Pinterest first</div>';
         return;
       }
 
-      // Disable all buttons and show loading
       modeButtons.forEach(btn => btn.disabled = true);
-      statusEl.innerHTML = '<div class="loading">🔮 Step 1/3: Collecting Pinterest data...</div>';
+      statusEl.innerHTML = '<div class="loading">📍 Extracting Pinterest pins...</div>';
       resultsEl.style.display = 'none';
 
-      // Step 1: Extract pins from Pinterest
+      // Step 1: Extract pins
       const pinsResponse = await new Promise((resolve, reject) => {
         chrome.tabs.sendMessage(tab.id, { action: 'extractPins' }, (response) => {
           if (chrome.runtime.lastError) {
-            reject(new Error('Please refresh Pinterest and try again'));
+            reject(new Error('Refresh Pinterest and try again'));
             return;
           }
           resolve(response);
         });
       });
 
-      if (!pinsResponse || !pinsResponse.success) {
+      if (!pinsResponse?.success) {
         throw new Error(pinsResponse?.error || 'Failed to extract pins');
       }
 
       const pins = pinsResponse.pins;
-      console.log(`Extracted ${pins.length} pins`);
+      statusEl.innerHTML = `<div class="loading">✅ Found ${pins.length} pins<br>📤 Sending to backend...</div>`;
 
-      // Step 2: Get user UUID
-      statusEl.innerHTML = '<div class="loading">🔮 Step 2/3: Sending data to backend...</div>';
-
-      const uuidResponse = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ action: 'getUserUUID' }, (response) => {
-          if (chrome.runtime.lastError || !response.success) {
-            reject(new Error('Failed to get user ID'));
-            return;
-          }
-          resolve(response);
-        });
+      // Step 2: Send pins to backend
+      const sendResponse = await chrome.runtime.sendMessage({
+        action: 'sendPinsToBackend',
+        pins: pins
       });
 
-      const userUUID = uuidResponse.uuid;
-
-      // Step 3: Send pins to backend
-      const sendResponse = await fetch(`${API_BASE_URL}/pinterest/pins`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_uuid: userUUID,
-          pins: pins
-        })
-      });
-
-      if (!sendResponse.ok) {
-        throw new Error(`Backend error: ${sendResponse.statusText}`);
+      if (!sendResponse?.success) {
+        throw new Error('Failed to send pins to backend');
       }
 
-      console.log('Pins sent successfully');
+      statusEl.innerHTML = `<div class="loading">🤖 Generating ${mode} analysis...</div>`;
 
-      // Step 4: Run the selected analysis mode
-      await runModeAnalysis(mode, userUUID, pins.length);
+      // Step 3: Get analysis
+      const userIdResponse = await chrome.runtime.sendMessage({ action: 'getUserUUID' });
+      if (!userIdResponse?.success) {
+        throw new Error('Failed to get user ID');
+      }
 
-      // Re-enable buttons
+      const userUUID = userIdResponse.uuid;
+      let analysisData;
+
+      if (mode === 'roast') {
+        const response = await fetch(`${API_BASE_URL}/analysis/roast/${userUUID}`, { method: 'POST' });
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        analysisData = await response.json();
+        displayRoastResults(analysisData, pins.length);
+      } else if (mode === 'self-discovery') {
+        const response = await fetch(`${API_BASE_URL}/analysis/self-discovery/${userUUID}`, { method: 'POST' });
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        analysisData = await response.json();
+        displaySelfDiscoveryResults(analysisData, pins.length);
+      } else if (mode === 'friend') {
+        // Friend mode requires chat interface
+        statusEl.innerHTML = '<div class="loading">Friend mode coming soon!</div>';
+        return;
+      }
+
+      statusEl.innerHTML = '';
       modeButtons.forEach(btn => btn.disabled = false);
 
     } catch (error) {
-      console.error('Error:', error);
-      statusEl.innerHTML = `<div class="error">⚠️ Error: ${error.message}<br>Make sure the backend is running!</div>`;
+      statusEl.innerHTML = `<div class="error">${error.message}</div>`;
       modeButtons.forEach(btn => btn.disabled = false);
     }
   }
 
-  async function runModeAnalysis(mode, userUUID, totalPins) {
-    if (mode === 'roast') {
-      statusEl.innerHTML = '<div class="loading">🔥 Step 3/3: Generating your roast...<br>This may take a moment...</div>';
-
-      const response = await fetch(`${API_BASE_URL}/analysis/roast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_uuid: userUUID })
-      });
-
-      if (!response.ok) throw new Error(`Analysis failed: ${response.statusText}`);
-
-      const data = await response.json();
-      displayRoastResults(data, totalPins);
-
-    } else if (mode === 'self-discovery') {
-      statusEl.innerHTML = '<div class="loading">🧘 Step 3/3: Generating deep insights...<br>This may take 10-15 seconds...</div>';
-
-      const response = await fetch(`${API_BASE_URL}/analysis/self-discovery`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_uuid: userUUID,
-          focus_areas: ['wellness', 'productivity', 'creativity']
-        })
-      });
-
-      if (!response.ok) throw new Error(`Analysis failed: ${response.statusText}`);
-
-      const data = await response.json();
-      displaySelfDiscoveryResults(data, totalPins);
-
-    } else if (mode === 'friend') {
-      statusEl.innerHTML = '<div class="loading">💬 Step 3/3: Starting conversation...<br>This may take a moment...</div>';
-
-      const response = await fetch(`${API_BASE_URL}/conversation/message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_uuid: userUUID,
-          message: "Hey! Based on my Pinterest boards, what kind of person do you think I am?"
-        })
-      });
-
-      if (!response.ok) throw new Error(`Conversation failed: ${response.statusText}`);
-
-      const data = await response.json();
-      displayFriendResults(data, totalPins);
-    }
-  }
-
+  // Display roast results
   function displayRoastResults(data, totalPins) {
-    statusEl.innerHTML = '🔥 Roast Complete!';
+    let html = `
+      <div class="result-title">${data.personality_name}</div>
 
-    let breakdownHTML = '';
+      <div class="result-section">
+        <div class="result-label">ROAST</div>
+        <div class="result-content">${data.roast}</div>
+      </div>
+
+      <div class="result-section">
+        <div class="result-label">VIBE CHECK</div>
+        <div class="result-content">${data.vibe_check}</div>
+      </div>
+
+      <div class="result-section">
+        <div class="result-label">PERSONALITY BREAKDOWN</div>
+    `;
+
     data.breakdown.forEach(item => {
-      breakdownHTML += `
-        <div class="percentage-bar">
-          <div class="percentage-label">
-            <span>${item.trait}</span>
-            <span>${item.percentage}%</span>
-          </div>
-          <div class="bar">
-            <div class="bar-fill" style="width: ${item.percentage}%"></div>
-          </div>
+      html += `
+        <div class="breakdown-item">
+          <span>${item.trait}</span>
+          <span>${item.percentage}%</span>
         </div>
+        <div class="breakdown-bar" style="width: ${item.percentage}%"></div>
       `;
     });
 
-    resultsEl.innerHTML = `
-      <div class="results">
-        <div class="personality-name">${data.personality_name}</div>
-        <div class="roast-text">"${data.roast}"</div>
-        <div class="vibe-check">✨ ${data.vibe_check}</div>
-        <div class="breakdown">
-          <div class="breakdown-title">Your Vibe Breakdown:</div>
-          ${breakdownHTML}
-        </div>
-        <div class="pin-count">📌 Analyzed ${data.data_summary.pinterest_pins_analyzed} pins</div>
-      </div>
-    `;
+    html += `</div>`;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${totalPins} Pinterest pins</div>`;
 
+    resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
-    resultsEl.scrollIntoView({ behavior: 'smooth' });
   }
 
+  // Display self-discovery results
   function displaySelfDiscoveryResults(data, totalPins) {
-    statusEl.innerHTML = '🧘 Self-Discovery Complete!';
+    let html = `<div class="result-title">Self-Discovery Insights</div>`;
 
-    let insightsHTML = '';
-    if (data.insights && data.insights.length > 0) {
+    // Insights
+    if (data.insights?.length > 0) {
+      html += `<div class="result-section">`;
       data.insights.forEach(insight => {
-        insightsHTML += `
-          <div style="margin-bottom: 15px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-            <div style="font-weight: 600; margin-bottom: 5px;">${insight.category}</div>
-            <div style="font-size: 13px; line-height: 1.5; margin-bottom: 8px;">${insight.observation}</div>
-            <div style="font-size: 11px; opacity: 0.8; font-style: italic;">💭 ${insight.psychological_drivers}</div>
+        html += `
+          <div class="insight-item">
+            <div class="insight-category">${insight.category}</div>
+            <div class="insight-observation">${insight.observation}</div>
+            <div class="insight-driver">${insight.psychological_drivers}</div>
           </div>
         `;
       });
+      html += `</div>`;
     }
 
-    let actionItemsHTML = '';
-    if (data.action_items && data.action_items.length > 0) {
-      actionItemsHTML = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">';
-      actionItemsHTML += '<div style="font-weight: 600; margin-bottom: 10px;">🎯 Action Items:</div>';
-      data.action_items.forEach((item, index) => {
-        actionItemsHTML += `<div style="font-size: 12px; margin-bottom: 5px;">• ${item}</div>`;
+    // Action items
+    if (data.action_items?.length > 0) {
+      html += `
+        <div class="result-section">
+          <div class="result-label">ACTION ITEMS</div>
+      `;
+      data.action_items.forEach(item => {
+        html += `<div class="action-item">• ${item.suggestion}</div>`;
       });
-      actionItemsHTML += '</div>';
+      html += `</div>`;
     }
 
-    resultsEl.innerHTML = `
-      <div class="results">
-        <div class="personality-name">Your Self-Discovery Journey</div>
-        <div style="margin-top: 15px;">
-          ${insightsHTML || '<p>Insights are being generated...</p>'}
-          ${actionItemsHTML}
-        </div>
-        <div class="pin-count">📌 Analyzed ${totalPins} pins</div>
-      </div>
-    `;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${totalPins} Pinterest pins</div>`;
 
+    resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
-    resultsEl.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  function displayFriendResults(data, totalPins) {
-    statusEl.innerHTML = '💬 Friend Mode Active!';
-
-    resultsEl.innerHTML = `
-      <div class="results">
-        <div class="personality-name">Your AI Friend Says:</div>
-        <div class="roast-text">${data.message}</div>
-        <div class="pin-count">📌 Based on ${totalPins} pins from your Pinterest</div>
-      </div>
-    `;
-
-    resultsEl.style.display = 'block';
-    resultsEl.scrollIntoView({ behavior: 'smooth' });
   }
 });

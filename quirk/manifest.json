@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Quirk - AI Personality Insights",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI-powered personality analysis from your Pinterest and browsing habits",
   "permissions": [
     "sidePanel",
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "history",
+    "webNavigation"
   ],
   "host_permissions": [
     "https://*.pinterest.com/*",

@@ -22,42 +22,31 @@ CONNECTING KEYWORDS (use these naturally in your roast):
 Remember: The best roasts come from TRUE observations about their digital behavior, not generic stereotypes.
 """
 
-ROAST_USER_TEMPLATE = """Analyze this user's digital footprint and give them a fun, accurate personality roast.
+ROAST_USER_TEMPLATE = """Analyze this user's digital footprint and give them a SHORT, witty personality roast.
 
-USER DATA SUMMARY:
+USER DATA:
+- Pinterest: {pinterest_count} pins - {pinterest_summary}
+- Browsing: {browsing_summary}
+- Top Sites: {top_platforms}
+- Interests: {keywords}
 
-Pinterest Pins ({pinterest_count} analyzed):
-{pinterest_summary}
+REQUIREMENTS:
+1. Keep roast to 1 SHORT sentence (15 words max)
+2. Vibe check: 1 punchy line (10 words max)
+3. Personality name: creative but brief (5 words max)
+4. 3 traits that sum to 100%
 
-Browsing History (last {browsing_days} days):
-{browsing_summary}
-
-Top Platforms: {top_platforms}
-Dominant Interests: {keywords}
-
-Past Analysis Pattern (for consistency):
-{past_pattern}
-
-TASK:
-Create a witty roast that:
-1. Has a creative personality archetype name (mix unexpected traits - e.g., "Tech Minimalist with Cottagecore Dreams")
-2. Includes a punchy roast (1-2 sentences that reference their SPECIFIC behavior)
-3. Has a one-liner "vibe check"
-4. Provides personality breakdown with percentages that sum to exactly 100%
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {{
-  "personality_name": "Creative personality archetype name",
-  "roast": "Your witty roast here (reference specific behaviors from their data)",
-  "vibe_check": "One-liner vibe check",
+  "personality_name": "Brief archetype name",
+  "roast": "One short punchy sentence about their behavior",
+  "vibe_check": "Short one-liner",
   "breakdown": [
-    {{"trait": "Trait Name", "percentage": 45}},
-    {{"trait": "Another Trait", "percentage": 30}},
-    {{"trait": "Third Trait", "percentage": 25}}
+    {{"trait": "Trait 1", "percentage": 45}},
+    {{"trait": "Trait 2", "percentage": 30}},
+    {{"trait": "Trait 3", "percentage": 25}}
   ]
 }}
-
-IMPORTANT: Ensure percentages add up to exactly 100.
 """
 
 
