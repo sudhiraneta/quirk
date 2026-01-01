@@ -28,33 +28,31 @@ class RoastChain(QuirkBaseChain):
 
     async def generate_roast(self, user_uuid: str) -> Dict[str, Any]:
         """
-        Main entry point for roast generation
+        Main entry point for roast generation using REAL METRICS
         Returns: Dict with personality_name, roast, vibe_check, breakdown
         """
         try:
-            # 1. Prepare context (read-optimized)
-            context = await self.prepare_context(
-                user_uuid,
-                include_pinterest=True,
-                include_browsing=True,
-                limit=500
-            )
+            # 1. Get REAL metrics from metrics table
+            metrics = await self._get_metrics(user_uuid)
 
-            # 2. Extract keywords
-            keywords = self.extract_keywords(context)
+            # 2. Build prompt with REAL data
+            top_sites_str = ", ".join([s["site"] for s in metrics["top_sites"][:3]]) if metrics["top_sites"] else "none"
 
-            # 3. Summarize data for prompt (token optimization)
+            category_str = ", ".join([
+                f"{cat}: {data['percent']}%"
+                for cat, data in metrics.get("categories", {}).items()
+            ]) if metrics.get("categories") else "no data"
+
             prompt_vars = {
-                "keywords": ", ".join(keywords),
-                "pinterest_count": len(context["pinterest"]),
-                "pinterest_summary": self._summarize_pinterest(context["pinterest"]),
-                "browsing_summary": self._summarize_browsing(context["browsing"]),
-                "browsing_days": settings.browsing_history_days,
-                "top_platforms": ", ".join(context["browsing"].get("top_platforms", [])),
-                "past_pattern": self._extract_past_pattern(context["past_analyses"])
+                "productivity_score": metrics["overview"]["productivity_score"],
+                "top_site": metrics["top_sites"][0]["site"] if metrics["top_sites"] else "unknown",
+                "top_site_time": metrics["top_sites"][0]["time"] if metrics["top_sites"] else "0m",
+                "total_time": metrics["overview"]["total_time"],
+                "category_breakdown": category_str,
+                "most_visited_sites": top_sites_str
             }
 
-            # 4. Run LLM chain
+            # 3. Run LLM chain with METRICS
             chain = self.prompt | self.llm
             result = await chain.ainvoke(prompt_vars)
 
@@ -90,15 +88,27 @@ class RoastChain(QuirkBaseChain):
             logger.error(f"Error generating roast: {e}")
             return self._get_fallback_roast()
 
+    async def _get_metrics(self, user_uuid: str) -> Dict[str, Any]:
+        """Fetch real metrics from database - FAST"""
+        try:
+            # Reuse metrics calculation logic
+            from app.api.v1.endpoints.metrics import _fetch_and_calculate_metrics
+            return _fetch_and_calculate_metrics(user_uuid)
+        except Exception as e:
+            logger.error(f"Error fetching metrics: {e}")
+            return {
+                "overview": {"productivity_score": 0, "total_time": "0m"},
+                "top_sites": [],
+                "categories": {}
+            }
+
     def _get_fallback_roast(self) -> Dict[str, Any]:
         """Fallback roast if LLM fails"""
         return {
-            "personality_name": "The Digital Explorer",
-            "roast": "Your digital footprint is like a box of chocolates - we never know what we're gonna get, but it's always interesting",
-            "vibe_check": "You're giving 'eclectic chaos' energy and we're here for it",
+            "personality_name": "Digital Ghost",
+            "roast": "Not enough data to roast you yet",
+            "vibe_check": "Mystery mode activated",
             "breakdown": [
-                {"trait": "Curious Explorer", "percentage": 40},
-                {"trait": "Digital Minimalist", "percentage": 30},
-                {"trait": "Balanced Baddie", "percentage": 30}
+                {"trait": "Unknown", "percentage": 100}
             ]
         }

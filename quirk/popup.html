@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quirk - AI Personality Insights</title>
+  <title>Quirk</title>
   <style>
     * {
       margin: 0;
@@ -15,240 +15,119 @@
       width: 420px;
       min-height: 600px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-      background: #ffffff;
-      color: #000000;
+      background: #fff;
+      color: #000;
+      line-height: 1.6;
     }
 
     .container {
-      padding: 24px;
+      max-width: 380px;
+      margin: 0 auto;
+      padding: 32px 20px;
     }
 
     header {
-      border-bottom: 2px solid #000;
-      padding-bottom: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
     }
 
     h1 {
       font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-      letter-spacing: -0.5px;
-    }
-
-    .tagline {
-      font-size: 13px;
-      color: #666;
-      font-weight: 400;
-    }
-
-    /* Analytics Section */
-    .analytics-section {
-      background: #f8f8f8;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-
-    .analytics-title {
-      font-size: 12px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-      color: #666;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #e8e8e8;
-      font-size: 13px;
-    }
-
-    .stat-row:last-child {
-      border-bottom: none;
-    }
-
-    .stat-label {
-      color: #666;
-    }
-
-    .stat-value {
-      font-weight: 600;
-      color: #000;
-    }
-
-    /* Mode Selection */
-    #mode-selection {
-      display: grid;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .mode-btn {
-      padding: 16px;
-      background: #000;
-      color: #fff;
-      border: 2px solid #000;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: left;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .mode-btn:hover {
-      background: #fff;
-      color: #000;
-    }
-
-    .mode-btn:active {
-      transform: scale(0.98);
-    }
-
-    .mode-icon {
-      font-size: 18px;
-    }
-
-    /* Status */
-    #status {
-      min-height: 40px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: #666;
-      text-align: center;
-      padding: 12px;
-      background: #f8f8f8;
-      border-radius: 6px;
-    }
-
-    .loading {
-      color: #000;
-      font-weight: 500;
-    }
-
-    .error {
-      color: #d00;
-      background: #ffe0e0;
-      border-radius: 6px;
-      padding: 12px;
-    }
-
-    .success {
-      color: #060;
-      background: #e0ffe0;
-    }
-
-    /* Results */
-    #results {
-      background: #fff;
-      border: 2px solid #000;
-      border-radius: 8px;
-      padding: 20px;
-      margin-top: 16px;
-    }
-
-    .result-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #000;
-    }
-
-    .result-section {
-      margin: 16px 0;
-      line-height: 1.6;
-    }
-
-    .result-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #666;
       margin-bottom: 6px;
     }
 
-    .result-content {
+    .tagline {
       font-size: 14px;
-      color: #000;
-      font-weight: 400;
+      color: #6b6b6b;
     }
 
-    .breakdown-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      font-size: 13px;
-    }
-
-    .breakdown-bar {
-      height: 4px;
-      background: #000;
-      margin-top: 4px;
-      border-radius: 2px;
-    }
-
-    .insight-item {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f8f8f8;
-      border-left: 3px solid #000;
-    }
-
-    .insight-category {
-      font-weight: 600;
-      margin-bottom: 4px;
-      font-size: 13px;
-    }
-
-    .insight-observation {
-      font-size: 13px;
-      line-height: 1.5;
-      margin-bottom: 4px;
-    }
-
-    .insight-driver {
-      font-size: 12px;
-      color: #666;
-      font-style: italic;
-    }
-
-    .action-item {
-      padding: 10px 12px;
-      margin-bottom: 8px;
-      background: #f8f8f8;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .view-analytics-btn {
+    .primary-btn {
       width: 100%;
-      padding: 12px;
-      background: #f8f8f8;
-      color: #000;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 14px;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      margin-bottom: 16px;
+      margin: 12px 0;
+      transition: background 0.2s;
+    }
+
+    .primary-btn:hover {
+      background: #333;
+    }
+
+    .secondary-btn {
+      width: 100%;
+      padding: 14px;
+      background: #f9f9f9;
+      color: #000;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin: 12px 0;
       transition: all 0.2s;
     }
 
-    .view-analytics-btn:hover {
-      background: #000;
-      color: #fff;
-      border-color: #000;
+    .secondary-btn:hover {
+      background: #f0f0f0;
+    }
+
+    #status {
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .loading {
+      background: #f9f9f9;
+      color: #000;
+    }
+
+    .error {
+      background: #fff5f5;
+      color: #d00;
+      border: 1px solid #ffe0e0;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: #e5e5e5;
+      margin: 24px 0;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b6b6b;
+      margin: 20px 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #results {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    .result-text {
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 12px 0;
+    }
+
+    .result-meta {
+      font-size: 12px;
+      color: #6b6b6b;
+      margin-top: 16px;
+      text-align: center;
     }
   </style>
 </head>
@@ -256,35 +135,26 @@
   <div class="container">
     <header>
       <h1>Quirk</h1>
-      <div class="tagline">AI-powered personality insights</div>
+      <div class="tagline">Your digital behavior, analyzed</div>
     </header>
 
-    <button class="view-analytics-btn" id="view-analytics">
-      📊 View Browsing Analytics
+    <button class="primary-btn" onclick="window.location.href='metrics-dashboard.html'">
+      View Metrics Dashboard
     </button>
 
-    <div id="analytics-display" style="display: none;">
-      <!-- Analytics will be injected here -->
-    </div>
+    <div class="section-divider"></div>
+
+    <div class="section-title">Quick Analysis</div>
 
     <div id="status"></div>
 
-    <div id="mode-selection">
-      <button class="mode-btn" data-mode="roast">
-        <span>🔥 Roast Mode</span>
-        <span class="mode-icon">→</span>
-      </button>
+    <button class="secondary-btn mode-btn" data-mode="roast">
+      Get Roasted
+    </button>
 
-      <button class="mode-btn" data-mode="self-discovery">
-        <span>🧠 Self-Discovery</span>
-        <span class="mode-icon">→</span>
-      </button>
-
-      <button class="mode-btn" data-mode="friend">
-        <span>💬 Friend Chat</span>
-        <span class="mode-icon">→</span>
-      </button>
-    </div>
+    <button class="secondary-btn mode-btn" data-mode="self-discovery">
+      Self-Discovery
+    </button>
 
     <div id="results"></div>
   </div>

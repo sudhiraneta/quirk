@@ -22,31 +22,34 @@ CONNECTING KEYWORDS (use these naturally in your roast):
 Remember: The best roasts come from TRUE observations about their digital behavior, not generic stereotypes.
 """
 
-ROAST_USER_TEMPLATE = """Analyze this user's digital footprint and give them a SHORT, witty personality roast.
+ROAST_USER_TEMPLATE = """Roast this user based on their REAL browsing metrics.
 
-USER DATA:
-- Pinterest: {pinterest_count} pins - {pinterest_summary}
-- Browsing: {browsing_summary}
-- Top Sites: {top_platforms}
-- Interests: {keywords}
+METRICS:
+- Productivity Score: {productivity_score}%
+- Top Site: {top_site} ({top_site_time})
+- Total Screen Time: {total_time}
+- Category Split: {category_breakdown}
+- Most Visited: {most_visited_sites}
 
 REQUIREMENTS:
-1. Keep roast to 1 SHORT sentence (15 words max)
-2. Vibe check: 1 punchy line (10 words max)
-3. Personality name: creative but brief (5 words max)
-4. 3 traits that sum to 100%
+1. Roast must reference SPECIFIC metrics above (15 words max)
+2. Be funny but based on REAL data
+3. Vibe check: punchy observation (10 words max)
+4. Personality archetype: creative combo (5 words max)
 
 Return ONLY valid JSON:
 {{
-  "personality_name": "Brief archetype name",
-  "roast": "One short punchy sentence about their behavior",
-  "vibe_check": "Short one-liner",
+  "personality_name": "Archetype based on metrics",
+  "roast": "Specific roast using actual numbers/sites",
+  "vibe_check": "One-liner",
   "breakdown": [
     {{"trait": "Trait 1", "percentage": 45}},
     {{"trait": "Trait 2", "percentage": 30}},
     {{"trait": "Trait 3", "percentage": 25}}
   ]
 }}
+
+Example: If top_site is youtube and productivity_score is 20%, roast about YouTube addiction.
 """
 
 
