@@ -1,6 +1,19 @@
 -- RUN THIS IN SUPABASE SQL EDITOR
 -- Required for backend to work
 
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    extension_version VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_active TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_data_points INTEGER DEFAULT 0,
+    total_analyses INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active);
+
 CREATE TABLE IF NOT EXISTS daily_browsing (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_uuid UUID REFERENCES users(id) ON DELETE CASCADE,

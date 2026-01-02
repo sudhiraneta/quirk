@@ -62,15 +62,10 @@ async def get_user_status(
 
         user = result.data[0]
 
-        # Get conversation count
-        conv_result = db.table("conversations").select("id", count="exact").eq("user_uuid", user_uuid).execute()
-        conversations_count = conv_result.count if conv_result.count else 0
-
         return UserStatsResponse(
             user_uuid=user_uuid,
             data_points_collected=user.get("total_data_points", 0),
             analyses_count=user.get("total_analyses", 0),
-            conversations_count=conversations_count,
             created_at=datetime.fromisoformat(user["created_at"]),
             last_active=datetime.fromisoformat(user["last_active"])
         )

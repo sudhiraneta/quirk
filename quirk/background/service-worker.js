@@ -74,7 +74,6 @@ async function initializeUser() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        email: email,
         extension_version: chrome.runtime.getManifest().version
       })
     });

@@ -64,13 +64,6 @@ class SelfDiscoveryRequest(BaseModel):
     )
 
 
-class ConversationMessageRequest(BaseModel):
-    """Request to send a message in friend mode"""
-    user_uuid: str = Field(..., description="User UUID")
-    message: str = Field(..., description="User's message")
-    conversation_id: Optional[str] = Field(None, description="Conversation ID (optional for new conversation)")
-
-
 class FeedbackRequest(BaseModel):
     """Request to submit user feedback"""
     analysis_id: str = Field(..., description="Analysis ID")
@@ -148,29 +141,6 @@ class SelfDiscoveryResponse(BaseModel):
     created_at: datetime = Field(..., description="Creation timestamp")
 
 
-class ConversationMessageResponse(BaseModel):
-    """Response for conversation message"""
-    conversation_id: str = Field(..., description="Conversation ID")
-    message: str = Field(..., description="Assistant's response message")
-    tone: str = Field(..., description="Tone of the response")
-    context_used: List[str] = Field(..., description="List of context sources used")
-    created_at: datetime = Field(..., description="Creation timestamp")
-
-
-class ConversationMessage(BaseModel):
-    """Single conversation message"""
-    role: MessageRole = Field(..., description="Message role")
-    content: str = Field(..., description="Message content")
-    timestamp: datetime = Field(..., description="Message timestamp")
-
-
-class ConversationHistoryResponse(BaseModel):
-    """Response for conversation history"""
-    conversation_id: str = Field(..., description="Conversation ID")
-    messages: List[ConversationMessage] = Field(..., description="List of messages")
-    started_at: datetime = Field(..., description="Conversation start time")
-
-
 class AnalysisHistoryItem(BaseModel):
     """Single analysis history item"""
     id: str = Field(..., description="Analysis ID")
@@ -190,7 +160,6 @@ class UserStatsResponse(BaseModel):
     user_uuid: str = Field(..., description="User UUID")
     data_points_collected: int = Field(..., description="Total data points collected")
     analyses_count: int = Field(..., description="Total number of analyses")
-    conversations_count: int = Field(..., description="Total number of conversations")
     created_at: datetime = Field(..., description="Account creation date")
     last_active: datetime = Field(..., description="Last activity timestamp")
 

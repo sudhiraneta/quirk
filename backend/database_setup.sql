@@ -122,30 +122,6 @@ CREATE INDEX IF NOT EXISTS idx_analyses_mode ON analyses(mode);
 CREATE INDEX IF NOT EXISTS idx_analyses_created_at ON analyses(created_at);
 CREATE INDEX IF NOT EXISTS idx_analyses_user_mode_created ON analyses(user_uuid, mode, created_at DESC);
 
--- Conversations table (for friend mode)
-CREATE TABLE IF NOT EXISTS conversations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_uuid UUID REFERENCES users(id) ON DELETE CASCADE,
-    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    message_count INTEGER DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_conversations_user_uuid ON conversations(user_uuid);
-CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC);
-
--- Conversation messages table
-CREATE TABLE IF NOT EXISTS conversation_messages (
-    id BIGSERIAL PRIMARY KEY,
-    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL, -- 'user' or 'assistant'
-    content TEXT NOT NULL,
-    context_used JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON conversation_messages(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_messages_created_at ON conversation_messages(created_at);
 
 -- ============================================================================
 -- Helper Functions
@@ -183,8 +159,6 @@ ALTER TABLE browsing_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pinterest_pins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all operations for now - adjust as needed)
 CREATE POLICY "Enable all operations for all users" ON users FOR ALL USING (true);
@@ -192,8 +166,6 @@ CREATE POLICY "Enable all operations for browsing_history" ON browsing_history F
 CREATE POLICY "Enable all operations for pinterest_pins" ON pinterest_pins FOR ALL USING (true);
 CREATE POLICY "Enable all operations for embeddings" ON embeddings FOR ALL USING (true);
 CREATE POLICY "Enable all operations for analyses" ON analyses FOR ALL USING (true);
-CREATE POLICY "Enable all operations for conversations" ON conversations FOR ALL USING (true);
-CREATE POLICY "Enable all operations for conversation_messages" ON conversation_messages FOR ALL USING (true);
 
 -- ============================================================================
 -- Verification Queries
