@@ -86,14 +86,30 @@
     }
 
     .loading {
-      background: #f9f9f9;
-      color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e5e5e5;
+      border-top: 3px solid #000;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     .error {
-      background: #fff5f5;
-      color: #d00;
-      border: 1px solid #ffe0e0;
+      background: #fff;
+      color: #000;
+      border: 1px solid #000;
     }
 
     .section-divider {
@@ -117,6 +133,81 @@
       border-top: 1px solid #e5e5e5;
     }
 
+    .result-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #000;
+    }
+
+    .result-section {
+      margin: 20px 0;
+    }
+
+    .result-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b6b6b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .result-content {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #000;
+    }
+
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 12px 0 4px 0;
+      font-size: 13px;
+    }
+
+    .breakdown-bar {
+      height: 8px;
+      background: #000;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      transition: width 0.3s ease;
+    }
+
+    .insight-item {
+      margin: 16px 0;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .insight-category {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #000;
+    }
+
+    .insight-observation {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 6px;
+      color: #000;
+    }
+
+    .insight-driver {
+      font-size: 12px;
+      color: #6b6b6b;
+      font-style: italic;
+    }
+
+    .action-item {
+      padding: 8px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
     .result-text {
       font-size: 14px;
       line-height: 1.7;
@@ -129,6 +220,39 @@
       margin-top: 16px;
       text-align: center;
     }
+
+    #analytics-display {
+      margin: 16px 0;
+      padding: 16px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .analytics-section {
+      margin-bottom: 16px;
+    }
+
+    .analytics-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .stat-label {
+      color: #6b6b6b;
+    }
+
+    .stat-value {
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -138,15 +262,11 @@
       <div class="tagline">Your digital behavior, analyzed</div>
     </header>
 
-    <button class="primary-btn" onclick="window.location.href='metrics-dashboard.html'">
-      View Metrics Dashboard
-    </button>
-
-    <div class="section-divider"></div>
-
-    <div class="section-title">Quick Analysis</div>
-
     <div id="status"></div>
+
+    <button class="primary-btn" id="view-analytics">
+      Today's Metrics
+    </button>
 
     <button class="secondary-btn mode-btn" data-mode="roast">
       Get Roasted
@@ -156,6 +276,7 @@
       Self-Discovery
     </button>
 
+    <div id="analytics-display" style="display: none;"></div>
     <div id="results"></div>
   </div>
 

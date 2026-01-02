@@ -42,9 +42,9 @@ async def save_analysis_to_db(user_uuid: str, mode: str, output_data: dict, anal
         logger.error(f"Error saving analysis to database: {e}")
 
 
-@router.post("/roast", response_model=RoastAnalysisResponse)
+@router.post("/roast/{user_uuid}", response_model=RoastAnalysisResponse)
 async def generate_roast(
-    request: RoastAnalysisRequest,
+    user_uuid: str,
     background_tasks: BackgroundTasks,
     db: Client = Depends(get_supabase)
 ):
@@ -57,20 +57,20 @@ async def generate_roast(
     """
     try:
         # Check Redis cache
-        cache_key = f"roast:{request.user_uuid}"
+        cache_key = f"roast:{user_uuid}"
         cached = await redis_cache.get(cache_key)
         if cached:
-            logger.info(f"Returning cached roast for user {request.user_uuid}")
+            logger.info(f"Returning cached roast for user {user_uuid}")
             return RoastAnalysisResponse(**cached)
 
         # Initialize roast chain
         roast_chain = RoastChain(db)
 
         # Generate roast using LangChain
-        roast_result = await roast_chain.generate_roast(request.user_uuid)
+        roast_result = await roast_chain.generate_roast(user_uuid)
 
         # Get data summary
-        context = await roast_chain.prepare_context(request.user_uuid)
+        context = await roast_chain.prepare_context(user_uuid)
         data_summary = DataSummary(
             pinterest_pins_analyzed=len(context.get("pinterest", [])),
             browsing_days_analyzed=settings.browsing_history_days,
@@ -102,14 +102,14 @@ async def generate_roast(
         # Save analysis to database (background task)
         background_tasks.add_task(
             save_analysis_to_db,
-            request.user_uuid,
+            user_uuid,
             AnalysisMode.ROAST.value,
             roast_result,
             analysis_id,
             db
         )
 
-        logger.info(f"Generated roast analysis for user {request.user_uuid}")
+        logger.info(f"Generated roast analysis for user {user_uuid}")
         return response
 
     except Exception as e:
@@ -117,9 +117,9 @@ async def generate_roast(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/self-discovery", response_model=SelfDiscoveryResponse)
+@router.post("/self-discovery/{user_uuid}", response_model=SelfDiscoveryResponse)
 async def generate_self_discovery(
-    request: SelfDiscoveryRequest,
+    user_uuid: str,
     background_tasks: BackgroundTasks,
     db: Client = Depends(get_supabase)
 ):
@@ -130,10 +130,10 @@ async def generate_self_discovery(
     """
     try:
         # Check cache (shorter TTL for self-discovery)
-        cache_key = f"self_discovery:{request.user_uuid}"
+        cache_key = f"self_discovery:{user_uuid}"
         cached = await redis_cache.get(cache_key)
         if cached:
-            logger.info(f"Returning cached self-discovery for user {request.user_uuid}")
+            logger.info(f"Returning cached self-discovery for user {user_uuid}")
             return SelfDiscoveryResponse(**cached)
 
         # Initialize self-discovery chain
@@ -141,12 +141,12 @@ async def generate_self_discovery(
 
         # Generate analysis using LangChain
         analysis_result = await discovery_chain.generate_analysis(
-            request.user_uuid,
-            request.focus_areas
+            user_uuid,
+            focus_areas=[]  # No focus areas for now
         )
 
         # Get data summary
-        context = await discovery_chain.prepare_context(request.user_uuid, limit=1000)
+        context = await discovery_chain.prepare_context(user_uuid, limit=1000)
         data_summary = DataSummary(
             pinterest_pins_analyzed=len(context.get("pinterest", [])),
             browsing_days_analyzed=settings.browsing_history_days,
@@ -177,16 +177,78 @@ async def generate_self_discovery(
         # Save analysis to database (background task)
         background_tasks.add_task(
             save_analysis_to_db,
-            request.user_uuid,
+            user_uuid,
             AnalysisMode.SELF_DISCOVERY.value,
             analysis_result,
             analysis_id,
             db
         )
 
-        logger.info(f"Generated self-discovery analysis for user {request.user_uuid}")
+        logger.info(f"Generated self-discovery analysis for user {user_uuid}")
         return response
 
     except Exception as e:
         logger.error(f"Error generating self-discovery: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# NEW: Today's analysis endpoint
+from datetime import date as date_class
+
+@router.get("/today/{user_uuid}")
+async def get_today_analysis(
+    user_uuid: str,
+    db: Client = Depends(get_supabase)
+):
+    """
+    Get today's LLM analysis from database
+    Returns analysis if ready, or status if still processing
+    """
+    try:
+        today = date_class.today().isoformat()
+
+        # Check if analysis exists
+        result = db.table("daily_analysis").select("*").eq(
+            "user_uuid", user_uuid
+        ).eq("date", today).execute()
+
+        if not result.data or len(result.data) == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="No analysis found. Please view analytics to trigger analysis."
+            )
+
+        analysis = result.data[0]
+
+        # Check processing status
+        if analysis["processing_status"] == "pending":
+            return {
+                "status": "pending",
+                "message": "Analysis queued. Check back in a few seconds."
+            }
+
+        if analysis["processing_status"] == "processing":
+            return {
+                "status": "processing",
+                "message": "AI is analyzing your data. Almost done!"
+            }
+
+        if analysis["processing_status"] == "failed":
+            raise HTTPException(
+                status_code=500,
+                detail="Analysis failed. Please try again."
+            )
+
+        # Return completed analysis
+        return {
+            "status": "completed",
+            "date": analysis["date"],
+            "productivity_score": analysis.get("productivity_score"),
+            **analysis["analysis_data"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting today's analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

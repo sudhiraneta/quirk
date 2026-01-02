@@ -4,14 +4,19 @@
  */
 
 import { API_BASE_URL, STORAGE_KEYS } from '../shared/constants.js';
-import { collectBrowsingHistory, getBrowsingAnalytics } from '../shared/browsing-tracker.js';
+import { collectTodayBrowsingHistory } from '../shared/browsing-tracker.js';
 
 // Initialize user on extension install
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('Quirk extension installed!', details.reason);
 
   if (details.reason === 'install') {
-    await initializeUser();
+    // Set side panel to show onboarding first
+    chrome.sidePanel.setOptions({
+      path: 'onboarding.html',
+      enabled: true
+    });
+    console.log('👋 Onboarding page set in side panel');
   }
 });
 
@@ -20,77 +25,95 @@ chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId });
 });
 
-// Initialize user with backend
+// Get Chrome profile email (no OAuth popup needed!)
+async function getChromeProfileEmail() {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      if (userInfo.email) {
+        console.log('📧 Chrome profile email:', userInfo.email);
+        resolve(userInfo.email);
+      } else {
+        reject(new Error('User not signed into Chrome'));
+      }
+    });
+  });
+}
+
+// Initialize user with backend using Chrome profile email
 async function initializeUser() {
   console.log('🔵 initializeUser() called');
 
   try {
     // Check if user already exists
     console.log('📦 Checking chrome.storage.local for existing UUID...');
-    const { userUUID } = await chrome.storage.local.get(STORAGE_KEYS.USER_UUID);
+    const { userUUID, userEmail } = await chrome.storage.local.get([STORAGE_KEYS.USER_UUID, 'userEmail']);
 
-    if (userUUID) {
-      console.log('✅ User already initialized:', userUUID);
+    if (userUUID && userEmail) {
+      console.log('✅ User already initialized:', userUUID, userEmail);
       return userUUID;
     }
 
-    console.log('⚠️ No existing UUID found, creating new user...');
+    console.log('⚠️ No existing UUID found, getting Chrome profile email...');
 
-    // Log the API endpoint we're calling
+    // Get Chrome profile email (no popup!)
+    const email = await getChromeProfileEmail();
+    console.log('📧 Got Chrome email:', email);
+
+    // Create/get user from backend
     const apiUrl = `${API_BASE_URL}/users/initialize`;
     console.log('🌐 Calling API:', apiUrl);
-    console.log('📤 Request method: POST');
-    console.log('📤 Request body:', {
-      extension_version: chrome.runtime.getManifest().version
-    });
 
-    // Create new user
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        email: email,
         extension_version: chrome.runtime.getManifest().version
       })
     });
 
     console.log('📥 Response status:', response.status, response.statusText);
-    console.log('📥 Response ok:', response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ API returned error status:', response.status);
       console.error('❌ Error response body:', errorText);
-      throw new Error(`Failed to initialize user: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(`Failed to initialize user: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     console.log('📥 Response data:', data);
 
     const uuid = data.user_uuid;
-    console.log('🆔 New UUID generated:', uuid);
+    console.log('🆔 UUID for', email, ':', uuid);
 
     // Save to storage
-    console.log('💾 Saving UUID to chrome.storage.local...');
-    await chrome.storage.local.set({ [STORAGE_KEYS.USER_UUID]: uuid });
-    console.log('✅ User initialized successfully:', uuid);
+    console.log('💾 Saving UUID and email to chrome.storage.local...');
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.USER_UUID]: uuid,
+      userEmail: email
+    });
+    console.log('✅ User initialized successfully:', uuid, email);
 
     return uuid;
   } catch (error) {
     console.error('❌ ERROR in initializeUser():');
-    console.error('❌ Error name:', error.name);
     console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
 
-    // Check for specific error types
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      console.error('🚨 NETWORK ERROR: Cannot reach backend server');
-      console.error('🚨 Possible causes:');
-      console.error('   1. Backend server is not reachable (check if API is down)');
-      console.error('   2. CORS is blocking the request');
-      console.error('   3. Firewall or network issue');
-      console.error('🔧 Solution: Start backend with: cd backend && source venv/bin/activate && python -m app.main');
+    // If user not signed into Chrome, fall back to random UUID
+    if (error.message.includes('not signed into Chrome')) {
+      console.warn('⚠️ User not signed into Chrome, using fallback UUID');
+      // Fall back to old behavior (random UUID)
+      const fallbackUUID = crypto.randomUUID();
+      await chrome.storage.local.set({ [STORAGE_KEYS.USER_UUID]: fallbackUUID });
+      return fallbackUUID;
     }
 
     throw error;
@@ -125,17 +148,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'collectAndSendBrowsingData') {
-    collectAndSendBrowsingData()
+    collectAndSendTodayBrowsingData()
       .then(result => sendResponse({ success: true, result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
-  if (request.action === 'getBrowsingAnalytics') {
-    collectBrowsingHistory(30)
-      .then(data => {
-        const analytics = getBrowsingAnalytics(data);
-        sendResponse({ success: true, analytics });
+  if (request.action === 'getTodayAnalysis') {
+    getTodayAnalysisFromLLM()
+      .then(analysis => sendResponse({ success: true, analysis }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.action === 'initializeUser') {
+    initializeUser()
+      .then(result => {
+        // After successful init, switch side panel to main popup
+        chrome.sidePanel.setOptions({ path: 'popup.html' });
+        sendResponse({ success: true, result });
       })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
@@ -169,29 +200,30 @@ async function sendPinsToBackend(pins) {
   }
 }
 
-// Collect and send browsing data to backend
-async function collectAndSendBrowsingData() {
+// Collect and send TODAY's browsing data (raw, no organization)
+async function collectAndSendTodayBrowsingData() {
   try {
-    console.log('📊 Collecting browsing history...');
+    console.log('📊 Collecting TODAY\'s browsing history...');
     const uuid = await getUserUUID();
 
-    // Collect last 30 days of browsing
-    const browsingData = await collectBrowsingHistory(30);
-    console.log(`📊 Collected ${browsingData.length} browsing items`);
+    // Collect TODAY's raw browsing data
+    const todayData = await collectTodayBrowsingHistory();
+    console.log(`📊 Collected ${todayData.length} sites from today`);
 
-    if (browsingData.length === 0) {
-      return { message: 'No browsing data to send' };
+    if (todayData.length === 0) {
+      return { message: 'No browsing data from today' };
     }
 
-    // Send to backend
-    const response = await fetch(`${API_BASE_URL}/browsing/history`, {
+    // Send RAW data to backend - LLM will do ALL the analysis
+    const response = await fetch(`${API_BASE_URL}/browsing/today`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         user_uuid: uuid,
-        browsing_data: browsingData
+        raw_data: todayData,  // Just raw URLs, titles, visit counts
+        date: new Date().toISOString().split('T')[0]  // Today's date
       })
     });
 
@@ -200,10 +232,32 @@ async function collectAndSendBrowsingData() {
     }
 
     const result = await response.json();
-    console.log('✅ Browsing data sent successfully');
+    console.log('✅ Today\'s browsing data sent successfully');
     return result;
   } catch (error) {
     console.error('Error sending browsing data:', error);
+    throw error;
+  }
+}
+
+// Get today's analysis from LLM (productivity score, motivation, etc.)
+async function getTodayAnalysisFromLLM() {
+  try {
+    const uuid = await getUserUUID();
+
+    const response = await fetch(`${API_BASE_URL}/analysis/today/${uuid}`, {
+      method: 'GET'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get today's analysis: ${response.statusText}`);
+    }
+
+    const analysis = await response.json();
+    console.log('✅ Got today\'s analysis from LLM');
+    return analysis;
+  } catch (error) {
+    console.error('Error getting today\'s analysis:', error);
     throw error;
   }
 }

@@ -20,29 +20,29 @@ export const MODES = {
   FRIEND: 'friend'
 };
 
-// Browsing Categories
+// Browsing Categories (Simplified - LLM will do the real categorization)
 export const CATEGORIES = {
   SOCIAL_MEDIA: 'social_media',
   SHOPPING: 'shopping',
-  VIDEO: 'video',
-  NEWS: 'news',
+  PRODUCTIVITY: 'productivity',
   OTHER: 'other'
 };
 
-// Platform Detection Patterns
+// Platform Detection Patterns (Simplified - just label the platform, LLM will categorize)
 export const PLATFORM_PATTERNS = {
-  'instagram.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'instagram' },
-  'twitter.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'twitter' },
-  'x.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'twitter' },
-  'tiktok.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'tiktok' },
-  'linkedin.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'linkedin' },
-  'facebook.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'facebook' },
-  'youtube.com': { category: CATEGORIES.VIDEO, platform: 'youtube' },
-  'vimeo.com': { category: CATEGORIES.VIDEO, platform: 'vimeo' },
-  'amazon.com': { category: CATEGORIES.SHOPPING, platform: 'amazon' },
-  'ebay.com': { category: CATEGORIES.SHOPPING, platform: 'ebay' },
-  'etsy.com': { category: CATEGORIES.SHOPPING, platform: 'etsy' },
-  'pinterest.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'pinterest' }
+  'instagram.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Instagram' },
+  'twitter.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Twitter/X' },
+  'x.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Twitter/X' },
+  'tiktok.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'TikTok' },
+  'linkedin.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'LinkedIn' },
+  'facebook.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Facebook' },
+  'youtube.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'YouTube' },
+  'twitch.tv': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Twitch' },
+  'reddit.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Reddit' },
+  'amazon.com': { category: CATEGORIES.SHOPPING, platform: 'Amazon' },
+  'ebay.com': { category: CATEGORIES.SHOPPING, platform: 'eBay' },
+  'etsy.com': { category: CATEGORIES.SHOPPING, platform: 'Etsy' },
+  'pinterest.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Pinterest' }
 };
 
 // Collection Settings

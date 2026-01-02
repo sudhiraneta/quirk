@@ -9,7 +9,8 @@
     "tabs",
     "activeTab",
     "history",
-    "webNavigation"
+    "webNavigation",
+    "identity"
   ],
   "host_permissions": [
     "https://*.pinterest.com/*",
@@ -28,7 +29,7 @@
     "default_path": "popup.html"
   },
   "action": {
-    "default_title": "Open Quirk Side Panel",
+    "default_title": "Quirk",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

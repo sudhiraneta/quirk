@@ -1,35 +1,187 @@
-# Quirk 🎭
+# Quirk
 
-**AI-Powered Personality Analyzer for Pinterest & Browsing Data**
+**AI-powered digital behavior analysis. Know yourself through your browsing.**
 
-Quirk is a Chrome extension that analyzes your Pinterest boards and browsing habits to generate witty personality insights using GPT-4o. Get roasted, discover yourself, or chat with an AI friend who knows your digital vibe.
-
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-teal)
+![LangChain](https://img.shields.io/badge/LangChain-Powered-purple)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-## ✨ Features
+Daily productivity score. Doom scrolling detection. Personalized insights. No BS.
 
-### 🔥 Three Analysis Modes
+## What It Does
 
-1. **Roast Mode** - Fast, witty personality roasts based on your digital footprint
-2. **Self-Discovery Mode** - Deep insights with actionable recommendations
-3. **Friend Mode** - Conversational AI that knows your vibe
+### 📊 Daily Productivity Score (0-100)
+Your browsing analyzed. **Target average: 60/100**. Realistic scoring, not inflated.
 
-### 🎯 What It Analyzes
+- Gmail (23 visits) = productive
+- Instagram (89 visits) = doom scrolling detected
+- Score adapts to **YOUR** patterns, not population average
 
-- Pinterest boards, pins, and saved content
-- Browsing history across platforms (Instagram, YouTube, TikTok, etc.)
-- Time spent on different platforms
-- Content categories and interests
+### 🤖 AI Analysis (LLM-Powered)
+Frontend collects. **LLM organizes everything.**
 
-### 🧠 Powered By
+- Separates Gmail from Google Calendar from Google Drive
+- Detects LinkedIn browsing (Feed) vs productive (Jobs, Messages)
+- Flags 80+ social media visits as doom scrolling
+- Compares today vs your 7-day average
 
-- **OpenAI GPT-4o** - Advanced personality analysis
-- **LangChain** - Structured LLM workflows
-- **Supabase** - PostgreSQL database with pgvector for embeddings
-- **Redis** - Fast response caching (1 hour for roasts, 10 min for discovery)
+### 🕒 Active Hours Tracking
+Night owl? Early bird? We know.
+
+- Work hours (9am-5pm) productivity bonus
+- Late night browsing (11pm-6am) penalty
+- Personalized roasts based on your schedule
+
+### 🔥 Roast Mode
+**Metrics-based roasting.**
+
+"34/100? Your battery has better performance. Instagram: 147 visits. Google Docs: 3. The math ain't mathing."
+
+---
+
+## Why Quirk?
+
+### The Problem
+You don't know how you spend digital time. "Just 5 minutes" on Instagram = 2 hours doom scrolling.
+
+### The Solution
+**Raw data** → **LLM analysis** → **Truth**
+
+No frontend logic. No hardcoded categories. LLM does it all.
+
+---
+
+## Architecture
+
+```
+Extension              Backend + LLM
+┌────────────┐        ┌──────────────┐
+│ Collect    │  ────> │ Raw Data     │
+│ TODAY only │        │ LLM Analyzes │
+│ Raw URLs   │  <──── │ Insights     │
+└────────────┘        └──────────────┘
+```
+
+### Design Decisions
+
+| Decision | Why |
+|----------|-----|
+| **TODAY only** | Daily feedback loop. Not buried in history. |
+| **No frontend logic** | LLM does ALL categorization. Zero hardcoded rules. |
+| **Score target: 60** | Realistic. 60 = average, not 40 or 80. |
+| **LangChain** | Structured outputs. Type-safe. Production-ready. |
+| **Personalized** | Your metrics vs YOUR average. |
+
+### Tech Stack
+
+**Frontend:** Chrome Extension (Vanilla JS, no frameworks)
+- Collects browsing data
+- That's it.
+
+**Backend:** FastAPI + LangChain + GPT-4
+- Receives raw data
+- LLM analyzes everything
+- Returns structured insights
+
+---
+
+## Quick Start
+
+```bash
+# Backend
+cd backend
+pip install langchain openai fastapi
+python -m app.main
+
+# Extension
+chrome://extensions/ → Load unpacked → Select quirk/
+```
+
+Done.
+
+---
+
+## API Endpoints
+
+```
+POST /api/v1/browsing/today
+→ Send raw data [{url, title, hostname, visit_count, last_visit_time}]
+
+GET /api/v1/analysis/today/{user_uuid}
+→ Get analysis {score, summary, top_productive, top_distractions, motivation}
+
+POST /api/v1/analysis/roast/{user_uuid}
+→ Get roast (personalized, metrics-based, night owl jokes)
+```
+
+---
+
+## Productivity Score Formula
+
+```python
+Score = Productive Time (35pts)
+      - Distraction Penalty (-50pts)
+      + Focus Bonus (15pts)
+      + Time-of-Day (±10pts)
+      + Personal Growth (10pts)
+```
+
+**Why this formula?**
+- Doom scrolling hurts (-50pts max)
+- Night browsing = penalty
+- Beat your average = bonus
+- Target: 60/100 (realistic)
+
+---
+
+## LLM Output Format
+
+**Short. Clean. Crystal clear.**
+
+```json
+{
+  "productivity_score": 67,
+  "summary": "Solid work on Gmail (23) and Docs (15), but Instagram (89) needs limits.",
+  "top_productive": [
+    {"service": "Gmail", "visits": 23},
+    {"service": "Google Docs", "visits": 15},
+    {"service": "Slack", "visits": 12}
+  ],
+  "top_distractions": [
+    {"service": "Instagram", "visits": 89, "warning": true}
+  ],
+  "motivation": "Great focus during work hours! Try limiting Instagram to 15-min breaks."
+}
+```
+
+Top 3-5 items only. 1-2 line summary. That's it.
+
+---
+
+## Philosophy
+
+1. **Data > Opinions** - Your history doesn't lie
+2. **LLM > Rules** - Adapts to context, not rigid if-statements
+3. **Today > History** - Daily insights drive behavior change
+4. **Personalized > Universal** - Your 60 vs your average matters
+5. **Concise > Comprehensive** - More words ≠ more value
+
+---
+
+## Contributing
+
+PRs welcome. Keep it clean.
+
+- Frontend: No logic. Just data collection.
+- Backend: LLM does analysis. No hardcoded rules.
+- Tests: Required.
+
+---
+
+## License
+
+MIT
 
 ---
 

@@ -8,7 +8,7 @@ from typing import Dict, Any
 import logging
 from functools import lru_cache
 
-from app.services.supabase_client import get_supabase_client
+from app.db.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -65,7 +65,7 @@ async def _get_default_days(user_uuid: str) -> int:
     New user = no data older than 1 day
     """
     try:
-        db = get_supabase_client()
+        db = get_supabase()
 
         # Check oldest browsing data
         result = db.table("browsing_history").select("last_visit").eq(
@@ -93,7 +93,7 @@ def _fetch_and_calculate_metrics(user_uuid: str, days: int = 3, timezone: str = 
     try:
         from datetime import datetime, timedelta
         from zoneinfo import ZoneInfo
-        db = get_supabase_client()
+        db = get_supabase()
 
         # Calculate cutoff
         try:

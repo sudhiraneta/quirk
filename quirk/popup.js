@@ -15,24 +15,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Auto-sync browsing data on popup open
   syncBrowsingData();
 
-  // View analytics button
-  analyticsBtn.addEventListener('click', async () => {
-    if (analyticsDisplay.style.display === 'none') {
-      await showBrowsingAnalytics();
-    } else {
-      analyticsDisplay.style.display = 'none';
-      analyticsBtn.textContent = '📊 View Browsing Analytics';
-    }
-  });
-
-  // Mode buttons
-  modeButtons.forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const mode = btn.dataset.mode;
-      await runAnalysis(mode);
-    });
-  });
-
   // Sync browsing data to backend
   async function syncBrowsingData() {
     try {
@@ -45,142 +27,138 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
 
-  // Show browsing analytics
+  // View analytics button
+  analyticsBtn.addEventListener('click', async () => {
+    if (analyticsDisplay.style.display === 'none') {
+      await showBrowsingAnalytics();
+    } else {
+      analyticsDisplay.style.display = 'none';
+    }
+  });
+
+  // Mode buttons
+  modeButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const mode = btn.dataset.mode;
+      await runAnalysis(mode);
+    });
+  });
+
+  // Show TODAY's collected data (Backend LLM integration coming soon)
   async function showBrowsingAnalytics() {
-    statusEl.innerHTML = '<div class="loading">📊 Loading analytics...</div>';
+    statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'getBrowsingAnalytics'
-      });
+      // Collect today's data and send to backend
+      await syncBrowsingData();
 
-      if (!response.success) {
-        throw new Error(response.error);
-      }
+      // For now, show a simple message
+      // TODO: Replace with actual LLM analysis from backend
+      const tempAnalysis = {
+        productivity_score: "...",
+        date: new Date().toISOString().split('T')[0],
+        summary: "Data collected. Backend LLM analysis coming soon!"
+      };
 
-      const analytics = response.analytics;
+      const analysis = tempAnalysis;
 
+      // Display productivity score prominently
       let html = `
-        <div class="analytics-section">
-          <div class="analytics-title">Browsing Overview (30 days)</div>
-          <div class="stat-row">
-            <span class="stat-label">Total Sites</span>
-            <span class="stat-value">${analytics.total_sites}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Total Visits</span>
-            <span class="stat-value">${analytics.total_visits}</span>
-          </div>
+        <div class="analytics-section" style="text-align: center; padding: 20px; background: white; border: 1px solid #ddd; border-radius: 12px; color: black; margin-bottom: 16px;">
+          <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${analysis.productivity_score}</div>
+          <div style="font-size: 14px; opacity: 0.9;">Productivity Score</div>
+          <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">${analysis.date}</div>
         </div>
       `;
 
-      // Top platforms
-      if (analytics.top_platforms.length > 0) {
+      // Productivity Tools Used
+      if (analysis.organized_data?.productivity_tools?.length > 0) {
         html += `
           <div class="analytics-section">
-            <div class="analytics-title">Top Platforms</div>
+            <div class="analytics-title">✅ Productive Tools</div>
         `;
-        analytics.top_platforms.slice(0, 5).forEach(item => {
+        analysis.organized_data.productivity_tools.forEach(tool => {
           html += `
             <div class="stat-row">
-              <span class="stat-label">${item.platform}</span>
-              <span class="stat-value">${item.visit_count} visits (${item.percentage}%)</span>
+              <span class="stat-label">${tool.service}</span>
+              <span class="stat-value">${tool.visit_count} visits</span>
             </div>
           `;
         });
         html += `</div>`;
       }
 
-      // Daily habits
-      if (analytics.daily_habits.length > 0) {
+      // Social Media / Distractions
+      if (analysis.organized_data?.social_media?.length > 0) {
         html += `
           <div class="analytics-section">
-            <div class="analytics-title">Daily Habits</div>
+            <div class="analytics-title">📱 Social Media</div>
         `;
-        analytics.daily_habits.slice(0, 5).forEach(habit => {
+        analysis.organized_data.social_media.forEach(social => {
+          const isWarning = social.productivity_value === 'negative';
           html += `
             <div class="stat-row">
-              <span class="stat-label">${habit.site}</span>
-              <span class="stat-value">${habit.visit_count} visits</span>
+              <span class="stat-label">${social.service}</span>
+              <span class="stat-value">${social.visit_count} visits ${isWarning ? '⚠️' : ''}</span>
             </div>
           `;
         });
         html += `</div>`;
       }
 
-      // Category breakdown
-      if (analytics.top_categories.length > 0) {
+      // Doom Scrolling Alert
+      if (analysis.doom_scrolling_alert?.detected) {
+        html += `
+          <div class="analytics-section" style="border-left: 4px solid #000; padding: 12px;">
+            <div class="analytics-title">🚨 Doom Scrolling Detected</div>
+            <div style="font-size: 13px; color: #666; margin-top: 6px;">
+              ${analysis.doom_scrolling_alert.message}
+            </div>
+          </div>
+        `;
+      }
+
+      // Insights
+      if (analysis.insights?.length > 0) {
         html += `
           <div class="analytics-section">
-            <div class="analytics-title">Categories</div>
+            <div class="analytics-title">💡 Insights</div>
         `;
-        analytics.top_categories.forEach(cat => {
-          html += `
-            <div class="stat-row">
-              <span class="stat-label">${cat.category}</span>
-              <span class="stat-value">${cat.percentage}%</span>
-            </div>
-          `;
+        analysis.insights.forEach(insight => {
+          html += `<div style="font-size: 13px; line-height: 1.6; padding: 6px 0; color: #333;">• ${insight}</div>`;
         });
         html += `</div>`;
       }
 
       analyticsDisplay.innerHTML = html;
       analyticsDisplay.style.display = 'block';
-      analyticsBtn.textContent = '❌ Hide Analytics';
       statusEl.innerHTML = '';
 
     } catch (error) {
-      statusEl.innerHTML = `<div class="error">Analytics unavailable: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="error">Analysis unavailable: ${error.message}</div>`;
     }
   }
 
   // Run personality analysis
   async function runAnalysis(mode) {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-      // Check if we're on Pinterest
-      if (!tab.url.includes('pinterest.com')) {
-        statusEl.innerHTML = '<div class="error">⚠️ Open Pinterest first</div>';
-        return;
-      }
-
       modeButtons.forEach(btn => btn.disabled = true);
-      statusEl.innerHTML = '<div class="loading">📍 Extracting Pinterest pins...</div>';
+      statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
       resultsEl.style.display = 'none';
 
-      // Step 1: Extract pins
-      const pinsResponse = await new Promise((resolve, reject) => {
-        chrome.tabs.sendMessage(tab.id, { action: 'extractPins' }, (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error('Refresh Pinterest and try again'));
-            return;
-          }
-          resolve(response);
-        });
+      // Get browsing analytics
+      const analyticsResponse = await chrome.runtime.sendMessage({
+        action: 'getBrowsingAnalytics'
       });
 
-      if (!pinsResponse?.success) {
-        throw new Error(pinsResponse?.error || 'Failed to extract pins');
+      if (!analyticsResponse?.success) {
+        throw new Error('Failed to get browsing analytics');
       }
 
-      const pins = pinsResponse.pins;
-      statusEl.innerHTML = `<div class="loading">✅ Found ${pins.length} pins<br>📤 Sending to backend...</div>`;
+      const analytics = analyticsResponse.analytics;
+      statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-      // Step 2: Send pins to backend
-      const sendResponse = await chrome.runtime.sendMessage({
-        action: 'sendPinsToBackend',
-        pins: pins
-      });
-
-      if (!sendResponse?.success) {
-        throw new Error('Failed to send pins to backend');
-      }
-
-      statusEl.innerHTML = `<div class="loading">🤖 Generating ${mode} analysis...</div>`;
-
-      // Step 3: Get analysis
+      // Get user UUID
       const userIdResponse = await chrome.runtime.sendMessage({ action: 'getUserUUID' });
       if (!userIdResponse?.success) {
         throw new Error('Failed to get user ID');
@@ -193,16 +171,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         const response = await fetch(`${API_BASE_URL}/analysis/roast/${userUUID}`, { method: 'POST' });
         if (!response.ok) throw new Error(`API error: ${response.status}`);
         analysisData = await response.json();
-        displayRoastResults(analysisData, pins.length);
+        displayRoastResults(analysisData, analytics);
       } else if (mode === 'self-discovery') {
         const response = await fetch(`${API_BASE_URL}/analysis/self-discovery/${userUUID}`, { method: 'POST' });
         if (!response.ok) throw new Error(`API error: ${response.status}`);
         analysisData = await response.json();
-        displaySelfDiscoveryResults(analysisData, pins.length);
-      } else if (mode === 'friend') {
-        // Friend mode requires chat interface
-        statusEl.innerHTML = '<div class="loading">Friend mode coming soon!</div>';
-        return;
+        displaySelfDiscoveryResults(analysisData, analytics);
       }
 
       statusEl.innerHTML = '';
@@ -215,9 +189,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // Display roast results
-  function displayRoastResults(data, totalPins) {
+  function displayRoastResults(data, analytics) {
     let html = `
-      <div class="result-title">${data.personality_name}</div>
+      <div class="result-title">${data.personality_name || 'Your Digital Personality'}</div>
 
       <div class="result-section">
         <div class="result-label">ROAST</div>
@@ -233,25 +207,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         <div class="result-label">PERSONALITY BREAKDOWN</div>
     `;
 
-    data.breakdown.forEach(item => {
-      html += `
-        <div class="breakdown-item">
-          <span>${item.trait}</span>
-          <span>${item.percentage}%</span>
-        </div>
-        <div class="breakdown-bar" style="width: ${item.percentage}%"></div>
-      `;
-    });
+    if (data.breakdown?.length > 0) {
+      data.breakdown.forEach(item => {
+        html += `
+          <div class="breakdown-item">
+            <span>${item.trait}</span>
+            <span>${item.percentage}%</span>
+          </div>
+          <div class="breakdown-bar" style="width: ${item.percentage}%"></div>
+        `;
+      });
+    }
 
     html += `</div>`;
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${totalPins} Pinterest pins</div>`;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${analytics.total_sites} sites, ${analytics.total_visits} visits</div>`;
 
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
   }
 
   // Display self-discovery results
-  function displaySelfDiscoveryResults(data, totalPins) {
+  function displaySelfDiscoveryResults(data, analytics) {
     let html = `<div class="result-title">Self-Discovery Insights</div>`;
 
     // Insights
@@ -281,7 +257,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       html += `</div>`;
     }
 
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${totalPins} Pinterest pins</div>`;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${analytics.total_sites} sites, ${analytics.total_visits} visits</div>`;
 
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
