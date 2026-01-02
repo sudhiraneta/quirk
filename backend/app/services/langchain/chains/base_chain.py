@@ -19,7 +19,6 @@ class QuirkBaseChain:
     async def prepare_context(
         self,
         user_uuid: str,
-        include_pinterest: bool = True,
         include_browsing: bool = True,
         limit: int = 500
     ) -> Dict[str, Any]:
@@ -28,17 +27,12 @@ class QuirkBaseChain:
         Returns structured context for LLM prompts
         """
         context = {
-            "pinterest": [],
             "browsing": {},
             "past_analyses": [],
             "keywords": []
         }
 
         try:
-            # Fetch Pinterest data
-            if include_pinterest:
-                context["pinterest"] = await self._get_pinterest_data(user_uuid, limit)
-
             # Fetch browsing history summary
             if include_browsing:
                 context["browsing"] = await self._get_browsing_summary(user_uuid)
@@ -49,24 +43,12 @@ class QuirkBaseChain:
             # Extract connecting keywords
             context["keywords"] = self.extract_keywords(context)
 
-            logger.info(f"Prepared context for user {user_uuid}: {len(context['pinterest'])} pins, {len(context.get('browsing', {}).get('platform_breakdown', {}))} platforms")
+            logger.info(f"Prepared context for user {user_uuid}: {len(context.get('browsing', {}).get('platform_breakdown', {}))} platforms")
 
         except Exception as e:
             logger.error(f"Error preparing context: {e}")
 
         return context
-
-    async def _get_pinterest_data(self, user_uuid: str, limit: int) -> List[Dict]:
-        """Query Pinterest pins from database"""
-        try:
-            result = self.db.table("pinterest_pins").select("*").eq(
-                "user_uuid", user_uuid
-            ).order("collected_at", desc=True).limit(limit).execute()
-
-            return result.data if result.data else []
-        except Exception as e:
-            logger.error(f"Error fetching Pinterest data: {e}")
-            return []
 
     async def _get_browsing_summary(self, user_uuid: str) -> Dict:
         """Query and aggregate browsing history"""
@@ -133,54 +115,12 @@ class QuirkBaseChain:
         """Extract connecting keywords from user's digital footprint"""
         keywords = []
 
-        # From Pinterest categories
-        if context.get("pinterest"):
-            categories = [
-                pin.get("category")
-                for pin in context["pinterest"]
-                if pin.get("category")
-            ]
-            # Get top 5 categories
-            category_counts = Counter(categories)
-            keywords.extend([cat for cat, _ in category_counts.most_common(5)])
-
         # From browsing platforms
         if context.get("browsing", {}).get("top_platforms"):
             keywords.extend(context["browsing"]["top_platforms"][:5])
 
         # Deduplicate and limit
         return list(set(keywords))[:15]
-
-    def _summarize_pinterest(self, pins: List[Dict]) -> str:
-        """Condense Pinterest data for LLM prompt (token optimization)"""
-        if not pins:
-            return "No Pinterest data available"
-
-        # Group by category
-        category_groups = {}
-        for pin in pins:
-            category = pin.get("category", "uncategorized")
-            if category not in category_groups:
-                category_groups[category] = []
-            category_groups[category].append(pin)
-
-        # Build summary
-        summary_lines = []
-        for category, category_pins in sorted(
-            category_groups.items(),
-            key=lambda x: len(x[1]),
-            reverse=True
-        )[:5]:  # Top 5 categories
-            examples = [
-                p.get("title") or p.get("description", "")[:50]
-                for p in category_pins[:3]  # 3 examples per category
-            ]
-            examples = [e for e in examples if e]
-            summary_lines.append(
-                f"- {category} ({len(category_pins)} pins): {', '.join(examples)}"
-            )
-
-        return "\n".join(summary_lines)
 
     def _summarize_browsing(self, browsing: Dict) -> str:
         """Condense browsing history for LLM prompt (token optimization)"""

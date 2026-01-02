@@ -71,23 +71,6 @@ CREATE INDEX IF NOT EXISTS idx_browsing_category ON browsing_history(category);
 CREATE INDEX IF NOT EXISTS idx_browsing_platform ON browsing_history(platform);
 CREATE INDEX IF NOT EXISTS idx_browsing_user_last_visit ON browsing_history(user_uuid, last_visit DESC);
 
--- Pinterest pins table
-CREATE TABLE IF NOT EXISTS pinterest_pins (
-    id BIGSERIAL PRIMARY KEY,
-    user_uuid UUID REFERENCES users(id) ON DELETE CASCADE,
-    title TEXT,
-    description TEXT,
-    alt_text TEXT,
-    board_name VARCHAR(255),
-    category VARCHAR(100),
-    full_text TEXT,
-    collected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_pins_user_uuid ON pinterest_pins(user_uuid);
-CREATE INDEX IF NOT EXISTS idx_pins_collected_at ON pinterest_pins(collected_at);
-CREATE INDEX IF NOT EXISTS idx_pins_category ON pinterest_pins(category);
-
 -- Embeddings table (for vector search)
 CREATE TABLE IF NOT EXISTS embeddings (
     id BIGSERIAL PRIMARY KEY,
@@ -156,14 +139,12 @@ $$ LANGUAGE plpgsql;
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE browsing_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pinterest_pins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all operations for now - adjust as needed)
 CREATE POLICY "Enable all operations for all users" ON users FOR ALL USING (true);
 CREATE POLICY "Enable all operations for browsing_history" ON browsing_history FOR ALL USING (true);
-CREATE POLICY "Enable all operations for pinterest_pins" ON pinterest_pins FOR ALL USING (true);
 CREATE POLICY "Enable all operations for embeddings" ON embeddings FOR ALL USING (true);
 CREATE POLICY "Enable all operations for analyses" ON analyses FOR ALL USING (true);
 

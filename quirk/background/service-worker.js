@@ -105,13 +105,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep channel open for async
   }
 
-  if (request.action === 'sendPinsToBackend') {
-    sendPinsToBackend(request.pins)
-      .then(result => sendResponse({ success: true, result }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-
   if (request.action === 'collectAndSendBrowsingData') {
     collectAndSendTodayBrowsingData()
       .then(result => sendResponse({ success: true, result }))
@@ -137,33 +130,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
-
-// Send pins to backend
-async function sendPinsToBackend(pins) {
-  try {
-    const uuid = await getUserUUID();
-
-    const response = await fetch(`${API_BASE_URL}/pinterest/pins`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        user_uuid: uuid,
-        pins: pins
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to send pins: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error sending pins to backend:', error);
-    throw error;
-  }
-}
 
 // Collect and send TODAY's browsing data (raw, no organization)
 async function collectAndSendTodayBrowsingData() {

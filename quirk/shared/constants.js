@@ -41,8 +41,7 @@ export const PLATFORM_PATTERNS = {
   'reddit.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Reddit' },
   'amazon.com': { category: CATEGORIES.SHOPPING, platform: 'Amazon' },
   'ebay.com': { category: CATEGORIES.SHOPPING, platform: 'eBay' },
-  'etsy.com': { category: CATEGORIES.SHOPPING, platform: 'Etsy' },
-  'pinterest.com': { category: CATEGORIES.SOCIAL_MEDIA, platform: 'Pinterest' }
+  'etsy.com': { category: CATEGORIES.SHOPPING, platform: 'Etsy' }
 };
 
 // Collection Settings

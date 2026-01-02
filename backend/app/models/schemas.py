@@ -33,26 +33,9 @@ class BrowsingHistoryRequest(BaseModel):
     history: List[BrowsingHistoryItem] = Field(..., description="List of browsing history items")
 
 
-class PinterestPin(BaseModel):
-    """Single Pinterest pin"""
-    title: Optional[str] = Field(None, description="Pin title")
-    description: Optional[str] = Field(None, description="Pin description")
-    alt_text: Optional[str] = Field(None, description="Image alt text")
-    board_name: Optional[str] = Field(None, description="Board name")
-    category: Optional[str] = Field(None, description="Pin category")
-
-
-class PinterestPinsRequest(BaseModel):
-    """Request to save Pinterest pins"""
-    user_uuid: str = Field(..., description="User UUID")
-    pins: List[PinterestPin] = Field(..., description="List of Pinterest pins")
-
-
 class RoastAnalysisRequest(BaseModel):
     """Request for roast mode analysis"""
     user_uuid: str = Field(..., description="User UUID")
-    include_pinterest: bool = Field(True, description="Include Pinterest data in analysis")
-    include_browsing: bool = Field(True, description="Include browsing history in analysis")
 
 
 class SelfDiscoveryRequest(BaseModel):
@@ -97,7 +80,6 @@ class PersonalityBreakdown(BaseModel):
 
 class DataSummary(BaseModel):
     """Summary of data used for analysis"""
-    pinterest_pins_analyzed: int = Field(0, description="Number of Pinterest pins analyzed")
     browsing_days_analyzed: int = Field(0, description="Number of days of browsing history analyzed")
     top_platforms: List[str] = Field(default_factory=list, description="Top platforms")
     total_data_points: int = Field(0, description="Total data points analyzed")
