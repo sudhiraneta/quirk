@@ -233,13 +233,14 @@ async def save_today_browsing(
 
         db.table("daily_analysis").upsert(analysis_entry, on_conflict="user_uuid,date").execute()
 
-        # 3. Queue LLM analysis (background task)
-        background_tasks.add_task(process_llm_analysis, request.user_uuid, request.date, db)
-        logger.info(f"✅ Queued LLM analysis task for {request.user_uuid}")
+        # 3. Run LLM analysis IMMEDIATELY (5-10 seconds)
+        # Background tasks are unreliable, so we run it synchronously
+        logger.info(f"🚀 Starting immediate LLM analysis for {request.user_uuid}")
+        await process_llm_analysis(request.user_uuid, request.date, db)
 
         return {
             "success": True,
-            "message": f"Data saved. Analysis queued for {request.date}",
+            "message": f"Data saved and analyzed for {request.date}",
             "date": request.date,
             "items_count": len(request.raw_data)
         }
