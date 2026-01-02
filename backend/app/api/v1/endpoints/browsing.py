@@ -247,3 +247,38 @@ async def save_today_browsing(
     except Exception as e:
         logger.error(f"Error saving today's browsing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze-now/{user_uuid}")
+async def analyze_now(user_uuid: str, db: Client = Depends(get_supabase)):
+    """
+    TEST ENDPOINT: Manually trigger LLM analysis for today
+    Use this to debug LLM issues
+    """
+    try:
+        today = datetime.utcnow().date().isoformat()
+        logger.info(f"🔍 Manual analysis requested for {user_uuid} on {today}")
+
+        # Call the LLM analysis directly (not in background)
+        await process_llm_analysis(user_uuid, today, db)
+
+        # Get the result
+        result = db.table("daily_analysis").select("*").eq(
+            "user_uuid", user_uuid
+        ).eq("date", today).execute()
+
+        if result.data:
+            return {
+                "status": "success",
+                "message": "Analysis completed",
+                "data": result.data[0]
+            }
+        else:
+            return {
+                "status": "no_data",
+                "message": "No analysis found after processing"
+            }
+
+    except Exception as e:
+        logger.error(f"Error in manual analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
