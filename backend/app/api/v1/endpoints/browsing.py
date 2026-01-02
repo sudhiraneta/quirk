@@ -3,9 +3,13 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from datetime import datetime
 import logging
+import json
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.models.schemas import BrowsingHistoryRequest, DataSaveResponse
 from app.db.supabase_client import get_supabase
+from app.config import settings
 from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -17,6 +21,105 @@ async def generate_embeddings_async(user_uuid: str, item_ids: list):
     # TODO: Implement embedding generation
     logger.info(f"Generating embeddings for {len(item_ids)} browsing items (user: {user_uuid})")
     pass
+
+
+async def process_llm_analysis(user_uuid: str, date: str, db: Client):
+    """
+    Background task to analyze TODAY's browsing data with LLM
+    - Fetch raw_data from daily_browsing
+    - Send to gpt-4o-mini for analysis
+    - Save results to daily_analysis
+    """
+    try:
+        logger.info(f"🤖 Starting LLM analysis for {user_uuid} on {date}")
+
+        # 1. Get raw browsing data
+        browsing_result = db.table("daily_browsing").select("raw_data").eq(
+            "user_uuid", user_uuid
+        ).eq("date", date).execute()
+
+        if not browsing_result.data:
+            logger.error(f"No browsing data found for {user_uuid} on {date}")
+            return
+
+        raw_data = browsing_result.data[0]["raw_data"]
+        logger.info(f"📊 Analyzing {len(raw_data)} sites")
+
+        # 2. Prepare prompt for LLM
+        system_prompt = """You are a productivity analyzer. Analyze today's browsing data and return JSON.
+
+Focus on:
+- Productivity score (0-100, target: 60)
+- Top productive sites
+- Top distractions
+- Motivation message
+
+Return ONLY valid JSON in this format:
+{
+  "productivity_score": 67,
+  "summary": "Brief summary of the day",
+  "top_productive": [{"service": "Gmail", "visits": 23}],
+  "top_distractions": [{"service": "Instagram", "visits": 89, "warning": true}],
+  "motivation": "Encouraging message"
+}"""
+
+        # Summarize data for LLM (keep it concise for gpt-4o-mini)
+        sites_summary = []
+        for site in raw_data[:15]:  # Top 15 sites only
+            sites_summary.append({
+                "title": site.get("title", "")[:50],
+                "hostname": site.get("hostname", ""),
+                "visits": site.get("visit_count", 0)
+            })
+
+        user_prompt = f"Today's browsing data:\n{json.dumps(sites_summary, indent=2)}\n\nAnalyze and return JSON."
+
+        # 3. Call LLM
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",  # Fast, cheap
+            temperature=0.7,
+            api_key=settings.openai_api_key
+        )
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+
+        logger.info("🔄 Calling OpenAI API...")
+        result = await llm.ainvoke(messages)
+        response_text = result.content.strip()
+
+        # Parse JSON (handle markdown wrapping)
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+
+        analysis_data = json.loads(response_text)
+        logger.info(f"✅ LLM analysis complete: score={analysis_data.get('productivity_score')}")
+
+        # 4. Save results
+        db.table("daily_analysis").update({
+            "productivity_score": analysis_data.get("productivity_score"),
+            "analysis_data": analysis_data,
+            "processing_status": "completed",
+            "llm_model": "gpt-4o-mini",
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("user_uuid", user_uuid).eq("date", date).execute()
+
+        logger.info(f"✅ Analysis saved for {user_uuid} on {date}")
+
+    except Exception as e:
+        logger.error(f"❌ Error in LLM analysis: {e}", exc_info=True)
+        # Mark as failed
+        try:
+            db.table("daily_analysis").update({
+                "processing_status": "failed",
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("user_uuid", user_uuid).eq("date", date).execute()
+        except:
+            pass
 
 
 @router.post("/history", response_model=DataSaveResponse)
@@ -131,8 +234,8 @@ async def save_today_browsing(
         db.table("daily_analysis").upsert(analysis_entry, on_conflict="user_uuid,date").execute()
 
         # 3. Queue LLM analysis (background task)
-        # TODO: Implement LLM analysis background task
-        # background_tasks.add_task(process_llm_analysis, request.user_uuid, request.date, db)
+        background_tasks.add_task(process_llm_analysis, request.user_uuid, request.date, db)
+        logger.info(f"✅ Queued LLM analysis task for {request.user_uuid}")
 
         return {
             "success": True,

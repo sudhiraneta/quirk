@@ -25,46 +25,23 @@ chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId });
 });
 
-// Get Chrome profile email (no OAuth popup needed!)
-async function getChromeProfileEmail() {
-  return new Promise((resolve, reject) => {
-    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      if (userInfo.email) {
-        console.log('📧 Chrome profile email:', userInfo.email);
-        resolve(userInfo.email);
-      } else {
-        reject(new Error('User not signed into Chrome'));
-      }
-    });
-  });
-}
-
-// Initialize user with backend using Chrome profile email
+// Initialize user with backend
 async function initializeUser() {
   console.log('🔵 initializeUser() called');
 
   try {
     // Check if user already exists
     console.log('📦 Checking chrome.storage.local for existing UUID...');
-    const { userUUID, userEmail } = await chrome.storage.local.get([STORAGE_KEYS.USER_UUID, 'userEmail']);
+    const { userUUID } = await chrome.storage.local.get(STORAGE_KEYS.USER_UUID);
 
-    if (userUUID && userEmail) {
-      console.log('✅ User already initialized:', userUUID, userEmail);
+    if (userUUID) {
+      console.log('✅ User already initialized:', userUUID);
       return userUUID;
     }
 
-    console.log('⚠️ No existing UUID found, getting Chrome profile email...');
+    console.log('⚠️ No existing UUID found, creating new user...');
 
-    // Get Chrome profile email (no popup!)
-    const email = await getChromeProfileEmail();
-    console.log('📧 Got Chrome email:', email);
-
-    // Create/get user from backend
+    // Create user from backend
     const apiUrl = `${API_BASE_URL}/users/initialize`;
     console.log('🌐 Calling API:', apiUrl);
 
@@ -91,30 +68,19 @@ async function initializeUser() {
     console.log('📥 Response data:', data);
 
     const uuid = data.user_uuid;
-    console.log('🆔 UUID for', email, ':', uuid);
+    console.log('🆔 New UUID:', uuid);
 
     // Save to storage
-    console.log('💾 Saving UUID and email to chrome.storage.local...');
+    console.log('💾 Saving UUID to chrome.storage.local...');
     await chrome.storage.local.set({
-      [STORAGE_KEYS.USER_UUID]: uuid,
-      userEmail: email
+      [STORAGE_KEYS.USER_UUID]: uuid
     });
-    console.log('✅ User initialized successfully:', uuid, email);
+    console.log('✅ User initialized successfully:', uuid);
 
     return uuid;
   } catch (error) {
     console.error('❌ ERROR in initializeUser():');
     console.error('❌ Error message:', error.message);
-
-    // If user not signed into Chrome, fall back to random UUID
-    if (error.message.includes('not signed into Chrome')) {
-      console.warn('⚠️ User not signed into Chrome, using fallback UUID');
-      // Fall back to old behavior (random UUID)
-      const fallbackUUID = crypto.randomUUID();
-      await chrome.storage.local.set({ [STORAGE_KEYS.USER_UUID]: fallbackUUID });
-      return fallbackUUID;
-    }
-
     throw error;
   }
 }

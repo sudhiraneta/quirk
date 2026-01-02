@@ -2,32 +2,16 @@ const emailDisplay = document.getElementById('email-display');
 const signInBtn = document.getElementById('sign-in-btn');
 const statusEl = document.getElementById('status');
 
-// Detect Chrome profile email
-async function detectEmail() {
-  try {
-    const userInfo = await chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' });
-
-    if (userInfo.email) {
-      emailDisplay.textContent = userInfo.email;
-      signInBtn.disabled = false;
-      return userInfo.email;
-    } else {
-      emailDisplay.textContent = 'No Chrome account detected';
-      statusEl.innerHTML = '<div class="error">Please sign in to Chrome to continue</div>';
-      return null;
-    }
-  } catch (error) {
-    emailDisplay.textContent = 'Error detecting email';
-    statusEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-    return null;
-  }
-}
+// Initialize - skip email detection, just show ready to start
+emailDisplay.textContent = 'Ready to track your productivity';
+signInBtn.disabled = false;
+signInBtn.textContent = 'Get Started';
 
 // Sign in and initialize user
 signInBtn.addEventListener('click', async () => {
   signInBtn.disabled = true;
-  signInBtn.textContent = 'Signing in...';
-  statusEl.textContent = 'Initializing your account...';
+  signInBtn.textContent = 'Setting up...';
+  statusEl.textContent = 'Creating your account...';
 
   try {
     // Initialize user with backend
@@ -49,6 +33,3 @@ signInBtn.addEventListener('click', async () => {
     signInBtn.textContent = 'Try Again';
   }
 });
-
-// Auto-detect email on load
-detectEmail();
