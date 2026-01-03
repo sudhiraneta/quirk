@@ -3,7 +3,9 @@
  * Main UI for triggering personality analysis with browsing analytics
  */
 
-import { API_BASE_URL } from './config.js';
+// API Configuration
+const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';
+// For local dev, change to: const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 document.addEventListener('DOMContentLoaded', async function() {
   const modeButtons = document.querySelectorAll('.mode-btn');
