@@ -138,12 +138,16 @@ $$ LANGUAGE plpgsql;
 
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_browsing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE browsing_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all operations for now - adjust as needed)
 CREATE POLICY "Enable all operations for all users" ON users FOR ALL USING (true);
+CREATE POLICY "Enable all operations for daily_browsing" ON daily_browsing FOR ALL USING (true);
+CREATE POLICY "Enable all operations for daily_analysis" ON daily_analysis FOR ALL USING (true);
 CREATE POLICY "Enable all operations for browsing_history" ON browsing_history FOR ALL USING (true);
 CREATE POLICY "Enable all operations for embeddings" ON embeddings FOR ALL USING (true);
 CREATE POLICY "Enable all operations for analyses" ON analyses FOR ALL USING (true);

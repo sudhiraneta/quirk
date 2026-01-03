@@ -32,11 +32,12 @@ class RoastChain(QuirkBaseChain):
         Returns: Dict with roast and vibe
         """
         try:
-            # 1. Get REAL metrics from browsing data
-            metrics = await self._get_metrics(user_uuid)
-
-            # 2. Get daily insights from AI analysis
-            daily_insights = await self._get_daily_insights(user_uuid)
+            # Fetch metrics and insights in PARALLEL for speed
+            import asyncio
+            metrics, daily_insights = await asyncio.gather(
+                self._get_metrics(user_uuid),
+                self._get_daily_insights(user_uuid)
+            )
 
             # 3. Build prompt with ALL available data
             top_sites_str = ", ".join([s["site"] for s in metrics["top_sites"][:3]]) if metrics["top_sites"] else "none"
@@ -97,7 +98,7 @@ class RoastChain(QuirkBaseChain):
             }
 
     async def _get_daily_insights(self, user_uuid: str) -> str:
-        """Get recent daily analysis insights"""
+        """Get recent daily analysis insights (ALL 7 days)"""
         try:
             from datetime import datetime, timedelta
 
@@ -114,12 +115,14 @@ class RoastChain(QuirkBaseChain):
             if not result.data:
                 return "No daily insights available yet"
 
-            # Format insights
+            # Format insights - USE ALL 7 DAYS (or however many we have)
             insights = []
-            for day in result.data[:3]:  # Last 3 days
+            for day in result.data:  # ALL days, not just 3
                 score = day.get("productivity_score", 0)
                 summary = day.get("analysis_data", {}).get("summary", "")
-                insights.append(f"{day['date']}: {score}% - {summary}")
+                # Keep summaries concise for token efficiency
+                short_summary = summary[:50] + "..." if len(summary) > 50 else summary
+                insights.append(f"{day['date']}: {score}% - {short_summary}")
 
             return " | ".join(insights) if insights else "Getting started"
 

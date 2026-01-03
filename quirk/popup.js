@@ -14,18 +14,50 @@ document.addEventListener('DOMContentLoaded', async function() {
   const analyticsBtn = document.getElementById('view-analytics');
   const analyticsDisplay = document.getElementById('analytics-display');
 
-  // Auto-sync browsing data on popup open
-  syncBrowsingData();
+  // Smart sync: Only sync if last sync was > 10 minutes ago
+  smartSyncBrowsingData();
 
-  // Sync browsing data to backend
+  // Smart sync: Only sync if data is stale (> 10 minutes)
+  async function smartSyncBrowsingData() {
+    try {
+      const { lastSync } = await chrome.storage.local.get('lastSync');
+      const now = Date.now();
+      const TEN_MINUTES = 10 * 60 * 1000;
+
+      // Only sync if last sync was > 10 minutes ago OR no previous sync
+      if (!lastSync || (now - lastSync) > TEN_MINUTES) {
+        console.log('🔄 Syncing browsing data (last sync was stale)...');
+        const response = await chrome.runtime.sendMessage({
+          action: 'collectAndSendBrowsingData'
+        });
+        await chrome.storage.local.set({ lastSync: now });
+        console.log('✅ Browsing data synced:', response);
+      } else {
+        console.log('⏭️ Skipping sync (data is fresh)');
+      }
+    } catch (error) {
+      console.log('Browsing sync skipped:', error.message);
+    }
+  }
+
+  // Sync browsing data to backend (force sync)
   async function syncBrowsingData() {
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'collectAndSendBrowsingData'
       });
+
+      if (!response.success) {
+        console.error('❌ Browsing sync failed:', response.error);
+        throw new Error(response.error || 'Failed to sync browsing data');
+      }
+
+      await chrome.storage.local.set({ lastSync: Date.now() });
       console.log('✅ Browsing data synced:', response);
+      return response;
     } catch (error) {
-      console.log('Browsing sync skipped:', error.message);
+      console.error('❌ Browsing sync error:', error.message);
+      throw error; // Re-throw so caller knows it failed
     }
   }
 
@@ -51,36 +83,55 @@ document.addEventListener('DOMContentLoaded', async function() {
     statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
     try {
-      // Collect today's data and send to backend
-      await syncBrowsingData();
-
-      // Get user UUID
+      // Get user UUID first
       const userResponse = await chrome.runtime.sendMessage({ action: 'getUserUUID' });
       if (!userResponse?.success) {
         throw new Error('Failed to get user ID');
       }
 
-      // Fetch LLM analysis from backend
+      // Fetch analysis IMMEDIATELY (may get yesterday's data if early day)
       const response = await fetch(`${API_BASE_URL}/analysis/today/${userResponse.uuid}`);
 
       if (response.status === 404) {
-        // No analysis found - might need to wait or trigger it
-        statusEl.innerHTML = `<div style="color: #666;">📊 No analysis available yet. Browsing data is being processed...</div>`;
+        // No analysis found - trigger sync and wait for LLM processing
+        statusEl.innerHTML = `<div style="color: #666;">📊 Collecting your browsing data...</div>`;
 
-        // Wait 2 seconds and retry once
-        setTimeout(async () => {
+        try {
+          await syncBrowsingData();
+        } catch (syncError) {
+          statusEl.innerHTML = `<div class="error">Failed to sync data: ${syncError.message}<br><br>Please check:<br>1. Backend is running<br>2. Database permissions are set<br>3. Check console for details</div>`;
+          return;
+        }
+
+        // Poll for analysis with exponential backoff (LLM takes 5-10s)
+        let attempts = 0;
+        const maxAttempts = 4;
+        const checkAnalysis = async () => {
+          attempts++;
           try {
+            statusEl.innerHTML = `<div style="color: #666;">🤖 AI is analyzing your data... (${attempts}/${maxAttempts})</div>`;
+
             const retryResponse = await fetch(`${API_BASE_URL}/analysis/today/${userResponse.uuid}`);
             if (retryResponse.ok) {
               const analysis = await retryResponse.json();
               displayAnalysisResults(analysis);
+            } else if (attempts < maxAttempts) {
+              // Retry with increasing delays: 2s, 4s, 6s
+              setTimeout(checkAnalysis, attempts * 2000);
             } else {
               statusEl.innerHTML = `<div style="color: #d00;">No browsing data collected yet today. Start browsing to see your analytics!</div>`;
             }
           } catch (e) {
-            statusEl.innerHTML = `<div style="color: #d00;">Analysis not ready. Try again in a few moments.</div>`;
+            if (attempts < maxAttempts) {
+              setTimeout(checkAnalysis, attempts * 2000);
+            } else {
+              statusEl.innerHTML = `<div style="color: #d00;">Analysis not ready. Please try again in a few moments.</div>`;
+            }
           }
-        }, 2000);
+        };
+
+        // Start first check after 3 seconds
+        setTimeout(checkAnalysis, 3000);
         return;
       }
 
@@ -91,6 +142,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
       const analysis = await response.json();
       displayAnalysisResults(analysis);
+
+      // Trigger background sync for next time (non-blocking)
+      syncBrowsingData().catch(() => {});
 
     } catch (error) {
       statusEl.innerHTML = `<div class="error">Analysis unavailable: ${error.message}</div>`;
@@ -111,8 +165,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
       }
 
+      // Show early day message if using yesterday's data
+      let earlyDayMessage = '';
+      if (analysis.early_day_fallback) {
+        earlyDayMessage = `
+          <div style="padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; margin-bottom: 16px; text-align: center; color: #856404;">
+            ☀️ ${analysis.message || "You just started your day! Here's yesterday's data:"}
+          </div>
+        `;
+      }
+
       // Display productivity score prominently
-      let html = `
+      let html = earlyDayMessage + `
         <div class="analytics-section" style="text-align: center; padding: 20px; background: white; border: 1px solid #ddd; border-radius: 12px; color: black; margin-bottom: 16px;">
           <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${analysis.productivity_score || 0}</div>
           <div style="font-size: 14px; opacity: 0.9;">Productivity Score</div>

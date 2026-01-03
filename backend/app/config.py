@@ -33,7 +33,8 @@ class Settings(BaseSettings):
 
     # LLM Settings
     llm_temperature: float = 0.7
-    llm_max_tokens: int = 250  # Reduced for concise 5-7 line outputs
+    llm_max_tokens: int = 200  # Reduced for faster responses (3-line roasts)
+    llm_max_tokens_analysis: int = 300  # For daily analysis
 
     # Data Collection
     browsing_history_days: int = 7  # Reduced from 30 for faster queries

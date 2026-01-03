@@ -160,11 +160,26 @@ async function collectAndSendTodayBrowsingData() {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to send browsing data: ${response.statusText}`);
+      // Get detailed error message from response body
+      let errorDetail = response.statusText || 'Unknown error';
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorData.message || errorDetail;
+      } catch (e) {
+        // If response isn't JSON, try text
+        try {
+          errorDetail = await response.text() || errorDetail;
+        } catch (e2) {
+          // Fallback to status code
+          errorDetail = `HTTP ${response.status}`;
+        }
+      }
+      console.error(`❌ Server error (${response.status}):`, errorDetail);
+      throw new Error(`Failed to send browsing data: ${errorDetail}`);
     }
 
     const result = await response.json();
-    console.log('✅ Today\'s browsing data sent successfully');
+    console.log('✅ Today\'s browsing data sent successfully:', result);
     return result;
   } catch (error) {
     console.error('Error sending browsing data:', error);

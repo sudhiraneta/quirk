@@ -112,19 +112,59 @@ async def get_today_analysis(
 ):
     """
     Get today's LLM analysis from database
+    Falls back to yesterday's data if today just started (< 5 sites)
     Returns analysis if ready, or status if still processing
     """
     try:
         # Use UTC date to match what's saved in the database
-        from datetime import datetime
+        from datetime import datetime, timedelta
         today = datetime.utcnow().date().isoformat()
 
-        # Check if analysis exists
+        # Check if analysis exists for today
         result = db.table("daily_analysis").select("*").eq(
             "user_uuid", user_uuid
         ).eq("date", today).execute()
 
+        # If no analysis for today, check if we should use yesterday's data
         if not result.data or len(result.data) == 0:
+            from concurrent.futures import ThreadPoolExecutor
+
+            # Fetch today's browsing data AND yesterday's analysis in PARALLEL
+            yesterday = (datetime.utcnow().date() - timedelta(days=1)).isoformat()
+
+            def get_today_browsing():
+                return db.table("daily_browsing").select("raw_data").eq(
+                    "user_uuid", user_uuid
+                ).eq("date", today).execute()
+
+            def get_yesterday_analysis():
+                return db.table("daily_analysis").select("*").eq(
+                    "user_uuid", user_uuid
+                ).eq("date", yesterday).execute()
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                browsing_future = executor.submit(get_today_browsing)
+                yesterday_future = executor.submit(get_yesterday_analysis)
+
+                browsing_result = browsing_future.result()
+                yesterday_result = yesterday_future.result()
+
+            # If no browsing data OR very few sites (early in the day), use yesterday
+            if not browsing_result.data or len(browsing_result.data[0].get("raw_data", [])) < 5:
+                logger.info(f"Early day detected for {user_uuid}, falling back to yesterday: {yesterday}")
+
+                if yesterday_result.data and len(yesterday_result.data) > 0:
+                    analysis = yesterday_result.data[0]
+                    if analysis["processing_status"] == "completed":
+                        return {
+                            "status": "completed",
+                            "date": analysis["date"],
+                            "productivity_score": analysis.get("productivity_score"),
+                            "early_day_fallback": True,
+                            "message": "You just started your day! Here's yesterday's data:",
+                            **analysis["analysis_data"]
+                        }
+
             raise HTTPException(
                 status_code=404,
                 detail="No analysis found. Please view analytics to trigger analysis."

@@ -14,10 +14,12 @@ export async function collectTodayBrowsingHistory() {
     today.setHours(0, 0, 0, 0);
     const startTime = today.getTime();
 
+    // Only fetch top 200 items (sorted by most recent)
+    // Backend only uses top 15 anyway, but get extra for deduping
     const historyItems = await chrome.history.search({
       text: '',
       startTime: startTime,
-      maxResults: 10000
+      maxResults: 200  // Reduced from 10000 for faster collection
     });
 
     console.log(`📊 Found ${historyItems.length} browsing items from today`);
@@ -44,7 +46,9 @@ export async function collectTodayBrowsingHistory() {
           return null;
         }
       })
-      .filter(item => item !== null);
+      .filter(item => item !== null)
+      .sort((a, b) => b.visit_count - a.visit_count)  // Sort by most visited
+      .slice(0, 100);  // Only send top 100 sites to backend
 
     console.log(`📊 Collected ${rawData.length} sites from today`);
     return rawData;
