@@ -28,14 +28,17 @@ class RoastChain(QuirkBaseChain):
 
     async def generate_roast(self, user_uuid: str) -> Dict[str, Any]:
         """
-        Main entry point for roast generation using REAL METRICS
-        Returns: Dict with personality_name, roast, vibe_check, breakdown
+        Generate creative roast using metrics + daily insights
+        Returns: Dict with roast and vibe
         """
         try:
-            # 1. Get REAL metrics from metrics table
+            # 1. Get REAL metrics from browsing data
             metrics = await self._get_metrics(user_uuid)
 
-            # 2. Build prompt with REAL data
+            # 2. Get daily insights from AI analysis
+            daily_insights = await self._get_daily_insights(user_uuid)
+
+            # 3. Build prompt with ALL available data
             top_sites_str = ", ".join([s["site"] for s in metrics["top_sites"][:3]]) if metrics["top_sites"] else "none"
 
             category_str = ", ".join([
@@ -49,14 +52,15 @@ class RoastChain(QuirkBaseChain):
                 "top_site_time": metrics["top_sites"][0]["time"] if metrics["top_sites"] else "0m",
                 "total_time": metrics["overview"]["total_time"],
                 "category_breakdown": category_str,
-                "most_visited_sites": top_sites_str
+                "most_visited_sites": top_sites_str,
+                "daily_insights": daily_insights
             }
 
-            # 3. Run LLM chain with METRICS
+            # 4. Run LLM chain with ALL data
             chain = self.prompt | self.llm
             result = await chain.ainvoke(prompt_vars)
 
-            # 5. Parse JSON response
+            # 5. Parse JSON response (new simpler format)
             response_text = result.content.strip()
 
             # Try to extract JSON if wrapped in markdown
@@ -67,25 +71,15 @@ class RoastChain(QuirkBaseChain):
 
             parsed_result = json.loads(response_text)
 
-            # Validate percentages sum to 100
-            total_percentage = sum(item["percentage"] for item in parsed_result["breakdown"])
-            if total_percentage != 100:
-                logger.warning(f"Percentages sum to {total_percentage}, adjusting...")
-                # Adjust the first item to make it sum to 100
-                if parsed_result["breakdown"]:
-                    diff = 100 - total_percentage
-                    parsed_result["breakdown"][0]["percentage"] += diff
-
-            logger.info(f"Generated roast for user {user_uuid}")
+            logger.info(f"Generated creative roast for user {user_uuid}")
             return parsed_result
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
             logger.error(f"Response was: {result.content if 'result' in locals() else 'N/A'}")
-            # Return fallback response
             return self._get_fallback_roast()
         except Exception as e:
-            logger.error(f"Error generating roast: {e}")
+            logger.error(f"Error generating roast: {e}", exc_info=True)
             return self._get_fallback_roast()
 
     async def _get_metrics(self, user_uuid: str) -> Dict[str, Any]:
@@ -102,13 +96,40 @@ class RoastChain(QuirkBaseChain):
                 "categories": {}
             }
 
+    async def _get_daily_insights(self, user_uuid: str) -> str:
+        """Get recent daily analysis insights"""
+        try:
+            from datetime import datetime, timedelta
+
+            # Get last 7 days of analysis
+            today = datetime.utcnow().date()
+            week_ago = today - timedelta(days=7)
+
+            result = self.db.table("daily_analysis").select(
+                "date, productivity_score, analysis_data"
+            ).eq("user_uuid", user_uuid).gte(
+                "date", week_ago.isoformat()
+            ).order("date", desc=True).limit(7).execute()
+
+            if not result.data:
+                return "No daily insights available yet"
+
+            # Format insights
+            insights = []
+            for day in result.data[:3]:  # Last 3 days
+                score = day.get("productivity_score", 0)
+                summary = day.get("analysis_data", {}).get("summary", "")
+                insights.append(f"{day['date']}: {score}% - {summary}")
+
+            return " | ".join(insights) if insights else "Getting started"
+
+        except Exception as e:
+            logger.error(f"Error fetching daily insights: {e}")
+            return "No insights available"
+
     def _get_fallback_roast(self) -> Dict[str, Any]:
         """Fallback roast if LLM fails"""
         return {
-            "personality_name": "Digital Ghost",
-            "roast": "Not enough data to roast you yet",
-            "vibe_check": "Mystery mode activated",
-            "breakdown": [
-                {"trait": "Unknown", "percentage": 100}
-            ]
+            "roast": "Not enough data to roast you yet. Start browsing and come back!",
+            "vibe": "Mystery mode activated 👻"
         }

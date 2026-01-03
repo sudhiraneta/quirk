@@ -42,7 +42,7 @@ async def save_analysis_to_db(user_uuid: str, mode: str, output_data: dict, anal
         logger.error(f"Error saving analysis to database: {e}")
 
 
-@router.post("/roast/{user_uuid}", response_model=RoastAnalysisResponse)
+@router.post("/roast/{user_uuid}")
 async def generate_roast(
     user_uuid: str,
     background_tasks: BackgroundTasks,
@@ -78,38 +78,20 @@ async def generate_roast(
             total_data_points=len(context.get("pinterest", [])) + len(context.get("browsing", {}).get("platform_breakdown", {}))
         )
 
-        # Build response
-        analysis_id = str(uuid.uuid4())
-        breakdown = [
-            PersonalityBreakdown(trait=item["trait"], percentage=item["percentage"])
-            for item in roast_result["breakdown"]
-        ]
-
-        response = RoastAnalysisResponse(
-            mode=AnalysisMode.ROAST,
-            personality_name=roast_result["personality_name"],
-            roast=roast_result["roast"],
-            vibe_check=roast_result["vibe_check"],
-            breakdown=breakdown,
-            data_summary=data_summary,
-            analysis_id=analysis_id,
-            created_at=datetime.utcnow()
-        )
+        # Build simplified response
+        response = {
+            "roast": roast_result["roast"],
+            "vibe": roast_result.get("vibe", "No vibe detected"),
+            "data_summary": {
+                "browsing_days_analyzed": settings.browsing_history_days,
+                "total_data_points": len(context.get("browsing", {}).get("top_sites", []))
+            }
+        }
 
         # Cache the response (1 hour TTL)
-        await redis_cache.set(cache_key, response.dict(), expire=settings.redis_ttl_roast)
+        await redis_cache.set(cache_key, response, expire=settings.redis_ttl_roast)
 
-        # Save analysis to database (background task)
-        background_tasks.add_task(
-            save_analysis_to_db,
-            user_uuid,
-            AnalysisMode.ROAST.value,
-            roast_result,
-            analysis_id,
-            db
-        )
-
-        logger.info(f"Generated roast analysis for user {user_uuid}")
+        logger.info(f"Generated roast for user {user_uuid}")
         return response
 
     except Exception as e:
@@ -117,79 +99,7 @@ async def generate_roast(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/self-discovery/{user_uuid}", response_model=SelfDiscoveryResponse)
-async def generate_self_discovery(
-    user_uuid: str,
-    background_tasks: BackgroundTasks,
-    db: Client = Depends(get_supabase)
-):
-    """
-    Generate deep self-discovery analysis (READ-OPTIMIZED)
-    - Multi-step LangChain analysis
-    - Deeper insights than roast mode
-    """
-    try:
-        # Check cache (shorter TTL for self-discovery)
-        cache_key = f"self_discovery:{user_uuid}"
-        cached = await redis_cache.get(cache_key)
-        if cached:
-            logger.info(f"Returning cached self-discovery for user {user_uuid}")
-            return SelfDiscoveryResponse(**cached)
-
-        # Initialize self-discovery chain
-        discovery_chain = SelfDiscoveryChain(db)
-
-        # Generate analysis using LangChain
-        analysis_result = await discovery_chain.generate_analysis(
-            user_uuid,
-            focus_areas=[]  # No focus areas for now
-        )
-
-        # Get data summary
-        context = await discovery_chain.prepare_context(user_uuid, limit=1000)
-        data_summary = DataSummary(
-            pinterest_pins_analyzed=len(context.get("pinterest", [])),
-            browsing_days_analyzed=settings.browsing_history_days,
-            top_platforms=context.get("browsing", {}).get("top_platforms", []),
-            total_data_points=len(context.get("pinterest", [])) + len(context.get("browsing", {}).get("platform_breakdown", {}))
-        )
-
-        # Build response
-        analysis_id = str(uuid.uuid4())
-        insights = [
-            Insight(**insight) for insight in analysis_result.get("insights", [])
-        ]
-        trends = Trends(**analysis_result.get("trends", {}))
-
-        response = SelfDiscoveryResponse(
-            mode=AnalysisMode.SELF_DISCOVERY,
-            insights=insights,
-            trends=trends,
-            action_items=analysis_result.get("action_items", []),
-            data_summary=data_summary,
-            analysis_id=analysis_id,
-            created_at=datetime.utcnow()
-        )
-
-        # Cache the response (10 min TTL)
-        await redis_cache.set(cache_key, response.dict(), expire=settings.redis_ttl_discovery)
-
-        # Save analysis to database (background task)
-        background_tasks.add_task(
-            save_analysis_to_db,
-            user_uuid,
-            AnalysisMode.SELF_DISCOVERY.value,
-            analysis_result,
-            analysis_id,
-            db
-        )
-
-        logger.info(f"Generated self-discovery analysis for user {user_uuid}")
-        return response
-
-    except Exception as e:
-        logger.error(f"Error generating self-discovery: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+# Self-discovery mode removed - only roast mode is supported
 
 
 # NEW: Today's analysis endpoint

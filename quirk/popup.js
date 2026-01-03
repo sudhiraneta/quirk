@@ -201,23 +201,14 @@ document.addEventListener('DOMContentLoaded', async function() {
       const userUUID = userIdResponse.uuid;
       let analysisData;
 
-      if (mode === 'roast') {
-        const response = await fetch(`${API_BASE_URL}/analysis/roast/${userUUID}`, { method: 'POST' });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || `API error: ${response.status}`);
-        }
-        analysisData = await response.json();
-        displayRoastResults(analysisData);
-      } else if (mode === 'self-discovery') {
-        const response = await fetch(`${API_BASE_URL}/analysis/self-discovery/${userUUID}`, { method: 'POST' });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || `API error: ${response.status}`);
-        }
-        analysisData = await response.json();
-        displaySelfDiscoveryResults(analysisData);
+      // Only roast mode is supported
+      const response = await fetch(`${API_BASE_URL}/analysis/roast/${userUUID}`, { method: 'POST' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `API error: ${response.status}`);
       }
+      analysisData = await response.json();
+      displayRoastResults(analysisData);
 
       statusEl.innerHTML = '';
       modeButtons.forEach(btn => btn.disabled = false);
@@ -228,76 +219,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
 
-  // Display roast results
+  // Display roast results (simplified)
   function displayRoastResults(data) {
     let html = `
-      <div class="result-title">${data.personality_name || 'Your Digital Personality'}</div>
+      <div class="result-title">🔥 Your Roast</div>
 
       <div class="result-section">
-        <div class="result-label">ROAST</div>
-        <div class="result-content">${data.roast}</div>
+        <div class="result-content" style="font-size: 15px; line-height: 1.8; white-space: pre-line;">
+          ${data.roast}
+        </div>
       </div>
 
       <div class="result-section">
         <div class="result-label">VIBE CHECK</div>
-        <div class="result-content">${data.vibe_check}</div>
+        <div class="result-content">${data.vibe}</div>
       </div>
-
-      <div class="result-section">
-        <div class="result-label">PERSONALITY BREAKDOWN</div>
     `;
 
-    if (data.breakdown?.length > 0) {
-      data.breakdown.forEach(item => {
-        html += `
-          <div class="breakdown-item">
-            <span>${item.trait}</span>
-            <span>${item.percentage}%</span>
-          </div>
-          <div class="breakdown-bar" style="width: ${item.percentage}%"></div>
-        `;
-      });
-    }
-
-    html += `</div>`;
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on your browsing data</div>`;
-
-    resultsEl.innerHTML = html;
-    resultsEl.style.display = 'block';
-  }
-
-  // Display self-discovery results
-  function displaySelfDiscoveryResults(data) {
-    let html = `<div class="result-title">Self-Discovery Insights</div>`;
-
-    // Insights
-    if (data.insights?.length > 0) {
-      html += `<div class="result-section">`;
-      data.insights.forEach(insight => {
-        html += `
-          <div class="insight-item">
-            <div class="insight-category">${insight.category}</div>
-            <div class="insight-observation">${insight.observation}</div>
-            <div class="insight-driver">${insight.psychological_drivers}</div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-    }
-
-    // Action items
-    if (data.action_items?.length > 0) {
-      html += `
-        <div class="result-section">
-          <div class="result-label">ACTION ITEMS</div>
-      `;
-      data.action_items.forEach(item => {
-        html += `<div class="action-item">• ${item.suggestion}</div>`;
-      });
-      html += `</div>`;
-    }
-
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on your browsing data</div>`;
+    html += `<div style="margin-top: 20px; font-size: 11px; color: #666; text-align: center;">Based on your browsing patterns</div>`;
 
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';

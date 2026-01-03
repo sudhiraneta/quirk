@@ -15,9 +15,7 @@ export const STORAGE_KEYS = {
 
 // Analysis Modes
 export const MODES = {
-  ROAST: 'roast',
-  SELF_DISCOVERY: 'self-discovery',
-  FRIEND: 'friend'
+  ROAST: 'roast'
 };
 
 // Browsing Categories (Simplified - LLM will do the real categorization)
