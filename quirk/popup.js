@@ -190,18 +190,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
       resultsEl.style.display = 'none';
 
-      // Get browsing analytics
-      const analyticsResponse = await chrome.runtime.sendMessage({
-        action: 'getBrowsingAnalytics'
-      });
-
-      if (!analyticsResponse?.success) {
-        throw new Error('Failed to get browsing analytics');
-      }
-
-      const analytics = analyticsResponse.analytics;
-      statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
       // Get user UUID
       const userIdResponse = await chrome.runtime.sendMessage({ action: 'getUserUUID' });
       if (!userIdResponse?.success) {
@@ -213,14 +201,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
       if (mode === 'roast') {
         const response = await fetch(`${API_BASE_URL}/analysis/roast/${userUUID}`, { method: 'POST' });
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || `API error: ${response.status}`);
+        }
         analysisData = await response.json();
-        displayRoastResults(analysisData, analytics);
+        displayRoastResults(analysisData);
       } else if (mode === 'self-discovery') {
         const response = await fetch(`${API_BASE_URL}/analysis/self-discovery/${userUUID}`, { method: 'POST' });
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || `API error: ${response.status}`);
+        }
         analysisData = await response.json();
-        displaySelfDiscoveryResults(analysisData, analytics);
+        displaySelfDiscoveryResults(analysisData);
       }
 
       statusEl.innerHTML = '';
@@ -233,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // Display roast results
-  function displayRoastResults(data, analytics) {
+  function displayRoastResults(data) {
     let html = `
       <div class="result-title">${data.personality_name || 'Your Digital Personality'}</div>
 
@@ -264,14 +258,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     html += `</div>`;
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${analytics.total_sites} sites, ${analytics.total_visits} visits</div>`;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on your browsing data</div>`;
 
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
   }
 
   // Display self-discovery results
-  function displaySelfDiscoveryResults(data, analytics) {
+  function displaySelfDiscoveryResults(data) {
     let html = `<div class="result-title">Self-Discovery Insights</div>`;
 
     // Insights
@@ -301,7 +295,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       html += `</div>`;
     }
 
-    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on ${analytics.total_sites} sites, ${analytics.total_visits} visits</div>`;
+    html += `<div style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">Based on your browsing data</div>`;
 
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
