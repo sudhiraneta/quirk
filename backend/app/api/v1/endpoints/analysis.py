@@ -205,7 +205,9 @@ async def get_today_analysis(
     Returns analysis if ready, or status if still processing
     """
     try:
-        today = date_class.today().isoformat()
+        # Use UTC date to match what's saved in the database
+        from datetime import datetime
+        today = datetime.utcnow().date().isoformat()
 
         # Check if analysis exists
         result = db.table("daily_analysis").select("*").eq(

@@ -2,7 +2,7 @@
  * Metrics Dashboard - Main feature
  */
 
-const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';
+import { API_BASE_URL } from './config.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const backBtn = document.getElementById('back-btn');

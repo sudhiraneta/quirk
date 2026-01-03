@@ -2,9 +2,9 @@
  * Shared constants for Quirk extension
  */
 
-// API Configuration
-export const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';  // Production API
-// export const API_BASE_URL = 'http://localhost:8000/api/v1';  // Local development
+// API Configuration - Import from config.js
+import { API_BASE_URL as CONFIG_API_URL } from '../config.js';
+export const API_BASE_URL = CONFIG_API_URL;
 
 // Storage Keys
 export const STORAGE_KEYS = {

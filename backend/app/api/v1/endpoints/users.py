@@ -33,9 +33,14 @@ async def initialize_user(
             "total_analyses": 0
         }
 
+        # Only add email if column exists (optional for now)
+        # TODO: Add email column to database and uncomment this
+        # if request.email:
+        #     user_data["email"] = request.email
+
         result = db.table("users").insert(user_data).execute()
 
-        logger.info(f"New user initialized: {user_uuid}")
+        logger.info(f"New user initialized: {user_uuid} (email: {request.email or 'not saved - column missing'})")
 
         return UserInitResponse(
             user_uuid=user_uuid,

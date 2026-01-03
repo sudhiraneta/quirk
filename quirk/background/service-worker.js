@@ -26,8 +26,8 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 // Initialize user with backend
-async function initializeUser() {
-  console.log('🔵 initializeUser() called');
+async function initializeUser(email = null) {
+  console.log('🔵 initializeUser() called with email:', email);
 
   try {
     // Check if user already exists
@@ -51,7 +51,8 @@ async function initializeUser() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        extension_version: chrome.runtime.getManifest().version
+        extension_version: chrome.runtime.getManifest().version,
+        email: email
       })
     });
 
@@ -120,7 +121,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'initializeUser') {
-    initializeUser()
+    initializeUser(request.email)
       .then(result => {
         // After successful init, switch side panel to main popup
         chrome.sidePanel.setOptions({ path: 'popup.html' });

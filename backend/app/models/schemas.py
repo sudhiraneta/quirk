@@ -13,6 +13,7 @@ from app.models.enums import AnalysisMode, BrowsingCategory, MessageRole
 class UserInitRequest(BaseModel):
     """Request to initialize a new user"""
     extension_version: str = Field(..., description="Extension version")
+    email: Optional[str] = Field(None, description="User email from Chrome profile")
 
 
 class BrowsingHistoryItem(BaseModel):

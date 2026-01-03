@@ -3,7 +3,7 @@
  * Main UI for triggering personality analysis with browsing analytics
  */
 
-const API_BASE_URL = 'https://quirk-kvxe.onrender.com/api/v1';
+import { API_BASE_URL } from './config.js';
 
 document.addEventListener('DOMContentLoaded', async function() {
   const modeButtons = document.querySelectorAll('.mode-btn');
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   });
 
-  // Show TODAY's collected data (Backend LLM integration coming soon)
+  // Show TODAY's collected data with LLM analysis
   async function showBrowsingAnalytics() {
     statusEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -52,90 +52,134 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Collect today's data and send to backend
       await syncBrowsingData();
 
-      // For now, show a simple message
-      // TODO: Replace with actual LLM analysis from backend
-      const tempAnalysis = {
-        productivity_score: "...",
-        date: new Date().toISOString().split('T')[0],
-        summary: "Data collected. Backend LLM analysis coming soon!"
-      };
+      // Get user UUID
+      const userResponse = await chrome.runtime.sendMessage({ action: 'getUserUUID' });
+      if (!userResponse?.success) {
+        throw new Error('Failed to get user ID');
+      }
 
-      const analysis = tempAnalysis;
+      // Fetch LLM analysis from backend
+      const response = await fetch(`${API_BASE_URL}/analysis/today/${userResponse.uuid}`);
+
+      if (response.status === 404) {
+        // No analysis found - might need to wait or trigger it
+        statusEl.innerHTML = `<div style="color: #666;">📊 No analysis available yet. Browsing data is being processed...</div>`;
+
+        // Wait 2 seconds and retry once
+        setTimeout(async () => {
+          try {
+            const retryResponse = await fetch(`${API_BASE_URL}/analysis/today/${userResponse.uuid}`);
+            if (retryResponse.ok) {
+              const analysis = await retryResponse.json();
+              displayAnalysisResults(analysis);
+            } else {
+              statusEl.innerHTML = `<div style="color: #d00;">No browsing data collected yet today. Start browsing to see your analytics!</div>`;
+            }
+          } catch (e) {
+            statusEl.innerHTML = `<div style="color: #d00;">Analysis not ready. Try again in a few moments.</div>`;
+          }
+        }, 2000);
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to get analysis: ${response.status}`);
+      }
+
+      const analysis = await response.json();
+      displayAnalysisResults(analysis);
+
+    } catch (error) {
+      statusEl.innerHTML = `<div class="error">Analysis unavailable: ${error.message}</div>`;
+    }
+  }
+
+  // Helper function to display analysis results
+  function displayAnalysisResults(analysis) {
+    try {
+      // Check if analysis is ready
+      if (analysis.status === 'pending' || analysis.status === 'processing') {
+        statusEl.innerHTML = `<div style="color: #666;">🤖 AI is analyzing your data... Check back in a few seconds!</div>`;
+        return;
+      }
+
+      if (analysis.status !== 'completed') {
+        statusEl.innerHTML = `<div style="color: #d00;">Analysis failed. Please try again.</div>`;
+        return;
+      }
 
       // Display productivity score prominently
       let html = `
         <div class="analytics-section" style="text-align: center; padding: 20px; background: white; border: 1px solid #ddd; border-radius: 12px; color: black; margin-bottom: 16px;">
-          <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${analysis.productivity_score}</div>
+          <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${analysis.productivity_score || 0}</div>
           <div style="font-size: 14px; opacity: 0.9;">Productivity Score</div>
           <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">${analysis.date}</div>
         </div>
       `;
 
-      // Productivity Tools Used
-      if (analysis.organized_data?.productivity_tools?.length > 0) {
+      // Summary
+      if (analysis.summary) {
         html += `
           <div class="analytics-section">
-            <div class="analytics-title">✅ Productive Tools</div>
+            <div class="analytics-title">📊 Summary</div>
+            <div style="font-size: 13px; line-height: 1.6; color: #333;">${analysis.summary}</div>
+          </div>
         `;
-        analysis.organized_data.productivity_tools.forEach(tool => {
+      }
+
+      // Top Productive Sites
+      if (analysis.top_productive?.length > 0) {
+        html += `
+          <div class="analytics-section">
+            <div class="analytics-title">✅ Top Productive</div>
+        `;
+        analysis.top_productive.forEach(item => {
           html += `
             <div class="stat-row">
-              <span class="stat-label">${tool.service}</span>
-              <span class="stat-value">${tool.visit_count} visits</span>
+              <span class="stat-label">${item.service}</span>
+              <span class="stat-value">${item.visits} visits</span>
             </div>
           `;
         });
         html += `</div>`;
       }
 
-      // Social Media / Distractions
-      if (analysis.organized_data?.social_media?.length > 0) {
+      // Top Distractions
+      if (analysis.top_distractions?.length > 0) {
         html += `
           <div class="analytics-section">
-            <div class="analytics-title">📱 Social Media</div>
+            <div class="analytics-title">📱 Top Distractions</div>
         `;
-        analysis.organized_data.social_media.forEach(social => {
-          const isWarning = social.productivity_value === 'negative';
+        analysis.top_distractions.forEach(item => {
+          const warningFlag = item.warning ? '⚠️' : '';
           html += `
             <div class="stat-row">
-              <span class="stat-label">${social.service}</span>
-              <span class="stat-value">${social.visit_count} visits ${isWarning ? '⚠️' : ''}</span>
+              <span class="stat-label">${item.service} ${warningFlag}</span>
+              <span class="stat-value">${item.visits} visits</span>
             </div>
           `;
         });
         html += `</div>`;
       }
 
-      // Doom Scrolling Alert
-      if (analysis.doom_scrolling_alert?.detected) {
+      // Motivation
+      if (analysis.motivation) {
         html += `
           <div class="analytics-section" style="border-left: 4px solid #000; padding: 12px;">
-            <div class="analytics-title">🚨 Doom Scrolling Detected</div>
-            <div style="font-size: 13px; color: #666; margin-top: 6px;">
-              ${analysis.doom_scrolling_alert.message}
+            <div class="analytics-title">💪 Motivation</div>
+            <div style="font-size: 13px; color: #333; margin-top: 6px;">
+              ${analysis.motivation}
             </div>
           </div>
         `;
       }
 
-      // Insights
-      if (analysis.insights?.length > 0) {
-        html += `
-          <div class="analytics-section">
-            <div class="analytics-title">💡 Insights</div>
-        `;
-        analysis.insights.forEach(insight => {
-          html += `<div style="font-size: 13px; line-height: 1.6; padding: 6px 0; color: #333;">• ${insight}</div>`;
-        });
-        html += `</div>`;
-      }
-
       analyticsDisplay.innerHTML = html;
       analyticsDisplay.style.display = 'block';
       statusEl.innerHTML = '';
-
     } catch (error) {
-      statusEl.innerHTML = `<div class="error">Analysis unavailable: ${error.message}</div>`;
+      statusEl.innerHTML = `<div class="error">Error displaying analysis: ${error.message}</div>`;
     }
   }
 

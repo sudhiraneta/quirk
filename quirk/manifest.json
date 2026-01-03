@@ -9,7 +9,9 @@
     "tabs",
     "activeTab",
     "history",
-    "webNavigation"
+    "webNavigation",
+    "identity",
+    "identity.email"
   ],
   "host_permissions": [
     "https://*.pinterest.com/*",
