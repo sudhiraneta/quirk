@@ -197,7 +197,7 @@ Built to answer: "Can you ship reliable AI systems, not just prototypes?"
 
 Questions about the orchestration architecture? Want to discuss production AI patterns?
 
-**Sudhira** | [LinkedIn](#) | [Portfolio](#)
+**Sudhira** | https://www.linkedin.com/in/sudhira-n/(#) | [Portfolio](#)
 
 ---
 
