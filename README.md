@@ -1,5 +1,5 @@
-# Quirk: Production-Grade AI Personality Analyzer
-### Multi-Agent RAG System Processing Social Media at Scale
+# Quirk: Production-Grade AI Productivity Analyzer
+### Multi-Agent RAG System Processing Online Browsing at Scale
 
 <div align="center">
 
