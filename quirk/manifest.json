@@ -2,25 +2,15 @@
   "manifest_version": 3,
   "name": "Quirk - AI Personality Insights",
   "version": "2.1.0",
-  "description": "AI-powered personality analysis from your Pinterest and browsing habits",
+  "description": "AI-powered personality insights and productivity analytics from your browsing habits",
   "permissions": [
     "sidePanel",
     "storage",
     "tabs",
     "activeTab",
     "history",
-    "webNavigation",
     "identity",
     "identity.email"
-  ],
-  "host_permissions": [
-    "https://*.pinterest.com/*",
-    "https://*.instagram.com/*",
-    "https://*.youtube.com/*",
-    "https://*.twitter.com/*",
-    "https://*.tiktok.com/*",
-    "https://*.amazon.com/*",
-    "https://*.linkedin.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",
@@ -37,13 +27,6 @@
       "128": "icons/icon128.png"
     }
   },
-  "content_scripts": [
-    {
-      "matches": ["https://*.pinterest.com/*"],
-      "js": ["content-script.js"],
-      "run_at": "document_idle"
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
