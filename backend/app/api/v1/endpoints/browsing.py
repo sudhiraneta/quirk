@@ -49,31 +49,51 @@ async def process_llm_analysis(user_uuid: str, date: str, db: Client):
         # 2. Prepare prompt for LLM
         system_prompt = """You are a productivity analyzer. Analyze today's browsing data and return JSON.
 
+CRITICAL RULES:
+- ONLY analyze sites provided in the browsing data below
+- DO NOT include any site with 0 visits
+- DO NOT add sites that aren't in the provided data
+- DO NOT hallucinate or infer sites
+- In the summary, SPECIFICALLY mention the actual websites visited (e.g., "Gmail", "LinkedIn", "ChatGPT") not generic phrases like "job-related activities"
+
+Categorization guidelines:
+- Productive: Work tools (Gmail, GitHub, Slack, Notion, ChatGPT/Claude for work, LinkedIn for job search, coding sites, documentation)
+- Distracting: Social media for entertainment (Instagram, Twitter, TikTok), video streaming (YouTube, Netflix), gaming, shopping
+- Note: If someone visits LinkedIn/ChatGPT/Claude for job search or work, count as productive
+
 Focus on:
 - Productivity score (0-100, target: 60)
-- Top productive sites
-- Top distractions
+- Summary: Mention specific websites visited, not generic categories (2-3 sentences max)
+- Top productive sites (max 3, only sites with >0 visits)
+- Top distractions (max 3, only sites with >0 visits, mark warning:true if excessive)
 - Motivation message
 
 Return ONLY valid JSON in this format:
 {
   "productivity_score": 67,
-  "summary": "Brief summary of the day",
+  "summary": "You spent most of your day on Gmail, LinkedIn, and ChatGPT, indicating a focus on professional tasks.",
   "top_productive": [{"service": "Gmail", "visits": 23}],
-  "top_distractions": [{"service": "Instagram", "visits": 89, "warning": true}],
+  "top_distractions": [{"service": "YouTube", "visits": 89, "warning": true}],
   "motivation": "Encouraging message"
 }"""
 
         # Summarize data for LLM (keep it concise for gpt-4o-mini)
         sites_summary = []
         for site in raw_data[:15]:  # Top 15 sites only
-            sites_summary.append({
-                "title": site.get("title", "")[:50],
-                "hostname": site.get("hostname", ""),
-                "visits": site.get("visit_count", 0)
-            })
+            visit_count = site.get("visit_count", 0)
+            # Only include sites with actual visits
+            if visit_count > 0:
+                sites_summary.append({
+                    "title": site.get("title", "")[:50],
+                    "hostname": site.get("hostname", ""),
+                    "visits": visit_count
+                })
 
-        user_prompt = f"Today's browsing data:\n{json.dumps(sites_summary, indent=2)}\n\nAnalyze and return JSON."
+        if not sites_summary:
+            logger.error(f"❌ No sites with >0 visits for {user_uuid} on {date}")
+            return
+
+        user_prompt = f"Today's browsing data:\n{json.dumps(sites_summary, indent=2)}\n\nAnalyze and return JSON. Remember: ONLY use sites from this data, never add sites with 0 visits."
 
         # 3. Call LLM with optimized settings for speed
         try:
@@ -106,6 +126,31 @@ Return ONLY valid JSON in this format:
                 response_text = response_text.split("```")[1].split("```")[0].strip()
 
             analysis_data = json.loads(response_text)
+
+            # VALIDATION: Filter out invalid entries
+            # Get set of actual hostnames from the data we sent to LLM
+            valid_hostnames = {site["hostname"].lower() for site in sites_summary}
+
+            # Filter top_productive: only keep entries with >0 visits
+            if "top_productive" in analysis_data and analysis_data["top_productive"]:
+                original_count = len(analysis_data["top_productive"])
+                analysis_data["top_productive"] = [
+                    item for item in analysis_data["top_productive"]
+                    if item.get("visits", 0) > 0
+                ]
+                if len(analysis_data["top_productive"]) < original_count:
+                    logger.warning(f"⚠️ Filtered out {original_count - len(analysis_data['top_productive'])} top_productive entries with 0 visits")
+
+            # Filter top_distractions: only keep entries with >0 visits
+            if "top_distractions" in analysis_data and analysis_data["top_distractions"]:
+                original_count = len(analysis_data["top_distractions"])
+                analysis_data["top_distractions"] = [
+                    item for item in analysis_data["top_distractions"]
+                    if item.get("visits", 0) > 0
+                ]
+                if len(analysis_data["top_distractions"]) < original_count:
+                    logger.warning(f"⚠️ Filtered out {original_count - len(analysis_data['top_distractions'])} top_distractions entries with 0 visits")
+
             logger.info(f"✅ LLM analysis complete: score={analysis_data.get('productivity_score')}")
         except json.JSONDecodeError as json_error:
             logger.error(f"❌ Failed to parse LLM response as JSON: {json_error}")
